@@ -1,0 +1,26 @@
+{
+  "name": "panu-net",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "nodemon src/index.ts",
+    "start:prod": "node dist/index.js",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "PanuNet",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.14.1",
+    "esbuild": "^0.25.2",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
