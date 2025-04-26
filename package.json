@@ -1,26 +1,49 @@
 {
-  "name": "panu-net",
+  "name": "panu-net-v2-server",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "start": "nodemon src/index.ts",
-    "start:prod": "node dist/index.js",
-    "build": "tsc"
+    "build": "tsc && node esbuild.config.js",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "start:prod": "node dist/bundle.js",
+    "lint": "eslint . --fix"
   },
   "keywords": [],
-  "author": "PanuNet",
+  "author": "Can Komusdogan",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "express": "^5.1.0"
+    "@types/express-session": "^1.18.1",
+    "@types/uuid": "^10.0.0",
+    "bcrypt": "^5.1.1",
+    "connect-redis": "^8.0.3",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "ioredis": "^5.6.1",
+    "mysql2": "^3.14.0",
+    "reflect-metadata": "^0.2.2",
+    "sequelize": "^6.37.7",
+    "sequelize-typescript": "^2.1.6",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.25.1",
+    "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.1",
-    "@types/node": "^22.14.1",
+    "@types/node": "^22.15.2",
+    "@types/sequelize": "^4.28.20",
+    "@types/validator": "^13.15.0",
+    "@vue/language-server": "^2.2.10",
     "esbuild": "^0.25.2",
-    "nodemon": "^3.1.9",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "eslint": "^9.25.1",
+    "globals": "^16.0.0",
+    "prettier": "^3.5.3",
+    "sequelize-cli": "^6.6.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.31.0"
   }
 }
