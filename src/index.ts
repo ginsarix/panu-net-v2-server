@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import routes from './routes/routes';
 import { errorHandler } from './middleware/errorHandler';
 import sequelize from './config/database';
@@ -7,6 +7,7 @@ import Redis from 'ioredis';
 import { RedisStore } from 'connect-redis';
 import session from 'express-session';
 import * as dotenv from 'dotenv';
+import * as bcrypt from 'bcrypt';
 
 dotenv.config();
 
@@ -38,11 +39,7 @@ app.use(
   })
 );
 
-app.use('/api/sample', routes);
-
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'OK', message: 'API is running' });
-});
+app.use('/api', routes);
 
 app.use(errorHandler);
 
@@ -50,16 +47,21 @@ app.listen(PORT, () => {
   console.log(`API server is running on http://localhost:${PORT}`);
 });
 
+const createDummy = async () => {
+  const user = await User.create({
+    username: 'johndoe',
+    email: 'john@example.com',
+    password: await bcrypt.hash('johndoepwd', 12),
+  });
+  console.log('User created:', user);
+}
+
 const initSequelize = async () => {
   try {
     await sequelize.sync({ force: true });
     console.log('Database synced successfully.');
 
-    const user = await User.create({
-      username: 'johndoe',
-      email: 'john@example.com',
-    });
-    console.log('User created:', user);
+    await createDummy();
   } catch (error) {
     console.error('Unable to connect to the database:', error);
   }
