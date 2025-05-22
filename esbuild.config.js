@@ -1,6 +1,7 @@
 import * as esbuild from 'esbuild';
 
-esbuild.build({
+esbuild
+  .build({
     entryPoints: ['./src/index.ts'],
     outfile: './dist/bundle.js',
     bundle: true,
@@ -10,10 +11,11 @@ esbuild.build({
     outdir: 'dist',
     sourcemap: true,
     minify: false, // reminder for future set this to true on prod
-    external: ['express'],
-}).then(() => {
+  })
+  .then(() => {
     console.log('Build succeeded');
-}).catch((error) => {
+  })
+  .catch((error) => {
     console.error('Build failed:', error);
     process.exit(1);
-});
+  });

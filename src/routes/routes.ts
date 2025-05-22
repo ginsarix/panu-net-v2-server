@@ -1,20 +1,21 @@
-import { Router } from 'express';
-import { healthCheck } from "../controllers/healthController.ts";
-import { createUser, deleteUser, deleteUsers, getUser, getUsers, patchUser } from '../controllers/usersController.ts';
+import { FastifyInstance } from 'fastify';
+import { healthCheck } from '../controllers/healthController';
+import {
+  createUser,
+  deleteUser,
+  deleteUsers,
+  getUser,
+  getUsers,
+  patchUser,
+} from '../controllers/usersController';
 
-const router = Router();
+export default async function routes(fastify: FastifyInstance) {
+  fastify.get('/test', healthCheck);
 
-const testRoute = '/test';
-const usersRoute = '/users';
-
-router.get(testRoute, healthCheck);
-
-router.get(usersRoute, getUsers);
-router.get(usersRoute + '/:id', getUser);
-router.post(usersRoute, createUser);
-router.patch(usersRoute + '/:id', patchUser)
-router.delete(usersRoute + '/:id', deleteUser);
-router.delete(usersRoute, deleteUsers);
-
-
-export default router;
+  fastify.get('/users', getUsers);
+  fastify.get('/users/:id', getUser);
+  fastify.post('/users', createUser);
+  fastify.patch('/users/:id', patchUser);
+  fastify.delete('/users/:id', deleteUser);
+  fastify.delete('/users', deleteUsers);
+}

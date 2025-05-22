@@ -1,148 +1,259 @@
-import { Request, Response } from 'express';
-import User from '../models/User.ts';
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { db } from '../db';
+import { users } from '../db/schema/user';
+import { eq, inArray, sql } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
-import { validateUser } from '../services/validations.ts';
+import { validateCreateUser, validateUpdateUser } from '../services/validations';
+import { PublicUser, User } from '../types/User.ts';
+import { getRedis, ttlToHeader } from '../services/redis.ts';
 
 const saltRounds = 12;
 const userIdRequiredMessage = "Kullanıcı ID'si gereklidir.";
 const idInvalidMessage = 'ID geçersiz.';
-const userNotFoundMessage = 'Kullanıcılar bulunamadı.';
+const userNotFoundMessage = 'Kullanıcı bulunamadı.';
+const couldntFetchUsersMessage = 'Kullanıcılar getirilemedi.';
 
 const parseId = (str: string) => parseInt(str, 10);
 
-const fetchUserById = async (req: Request, res: Response): Promise<User | null> => {
-  if (!req.params.id) {
-    res.status(400).json({ error: userIdRequiredMessage });
+const stripSensitive = (user: User): PublicUser => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { password, ...rest } = user;
+  return rest;
+};
+
+const fetchUserById = async (
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) => {
+  const { id } = request.params;
+  if (!id) {
+    reply.status(400).send({ error: userIdRequiredMessage });
     return null;
   }
-  const userId = parseId(req.params.id);
+  const userId = parseId(id);
 
   if (isNaN(userId)) {
-    res.status(400).json({ error: idInvalidMessage });
+    reply.status(400).send({ error: idInvalidMessage });
     return null;
   }
 
-  const user = await User.findByPk(userId);
-  if (!user) {
-    res.status(404).json({ error: userNotFoundMessage });
+  const user = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .then((rows) => rows[0]);
+
+  if (!user.creationDate) {
+    reply.status(404).send({ error: userNotFoundMessage });
     return null;
   }
 
   return user;
 };
 
-export const getUsers = async (req: Request, res: Response) => {
+export const getUsers = async (
+  request: FastifyRequest<{ Querystring: { limit?: number; skip?: number } }>,
+  reply: FastifyReply,
+) => {
   try {
-    const users = await User.findAll();
-    res.status(200).json(users);
+    const { limit = 10, skip = 0 } = request.query;
+
+    const redis = getRedis();
+    const cacheKey = `users:${skip}:${limit}`;
+
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      reply.header('X-Cache-Status', 'HIT');
+      await ttlToHeader(cacheKey, reply);
+      return reply.status(200).send(JSON.parse(cached));
+    }
+
+    const allUsers = await db
+      .select()
+      .from(users)
+      .orderBy(users.creationDate)
+      .offset(skip)
+      .limit(limit);
+
+    const result = allUsers.map(stripSensitive);
+    await redis.set(cacheKey, JSON.stringify(result));
+    await redis.expire(cacheKey, 45);
+
+    reply.header('X-Cache-Status', 'MISS');
+
+    reply.status(200).send(result);
   } catch (error) {
     console.error('Failed to fetch users: ', error);
-    res.status(500).json({ error: 'Kullanıcılar getirilemedi' });
+    reply.status(500).send({ error: couldntFetchUsersMessage });
   }
 };
 
-export const getUser = async (req: Request, res: Response) => {
+export const getUserCount = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const user = await fetchUserById(req, res);
+    const totalUsersResult = await db.select({ count: sql`count(*)` }).from(users);
+    const totalUsers = Number(totalUsersResult[0]?.count) || 0;
+
+    reply.status(200).send(totalUsers);
+  } catch (error) {
+    console.error('Failed to fetch user count: ', error);
+    reply.status(500).send({ error: couldntFetchUsersMessage });
+  }
+};
+
+export const getUser = async (
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) => {
+  try {
+    const user = await fetchUserById(request, reply);
     if (!user) return;
-    res.status(200).json(user);
+    reply.status(200).send(stripSensitive(user));
   } catch (error) {
     console.error('Failed to fetch user: ', error);
-    res.status(500).json({ error: 'Kullanıcı getirilemedi' });
+    reply.status(500).send({ error: couldntFetchUsersMessage });
   }
 };
 
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (
+  request: FastifyRequest<{ Body: unknown }>,
+  reply: FastifyReply,
+) => {
   try {
-    const userDto = req.body;
-
-    const validations = validateUser(userDto);
-    if (!validations.isValid) {
-      res.status(400).json({ errors: validations.errors });
+    const validation = validateCreateUser(request.body);
+    if (!validation.isValid) {
+      reply.status(400).send({ errors: validation.errors });
       return;
     }
+    const userDto = validation.value!;
 
     userDto.password = await bcrypt.hash(userDto.password, saltRounds);
 
-    await User.create(userDto);
-    res.status(201).json({ message: 'Kullanıcı başarıyla oluşturuldu.' });
+    await db.insert(users).values(userDto);
+    reply.status(201).send({ message: 'Kullanıcı başarıyla oluşturuldu.' });
   } catch (error) {
     console.error('Failed to create user: ', error);
-    res.status(500).json({ error: 'Kullanıcı oluşturulurken bir hata ile karşılaşıldı.' });
+    reply.status(500).send({ error: 'Kullanıcı oluşturulurken bir hata ile karşılaşıldı.' });
   }
 };
 
-export const patchUser = async (req: Request, res: Response) => {
+export const patchUser = async (
+  request: FastifyRequest<{ Params: { id: string }; Body: unknown }>,
+  reply: FastifyReply,
+) => {
   try {
-    const userId = parseId(req.params.id);
+    const userId = parseId(request.params.id);
 
     if (isNaN(userId)) {
-      res.status(400).json({ error: 'Invalid ID' });
+      reply.status(400).send({ error: 'Invalid ID' });
       return;
     }
 
-    const [updatedRows] = await User.update(
-      {
-        ...req.body,
-      },
-      {
-        where: { id: userId },
-      },
-    );
+    const validation = validateUpdateUser(request.body);
+    if (!validation.isValid) {
+      reply.status(400).send({ error: validation.errors });
+      return;
+    }
+    const updateDto = validation.value!;
 
-    if (updatedRows === 0) {
-      res.status(404).json({ error: userNotFoundMessage });
+    if (updateDto.password) {
+      updateDto.password = await bcrypt.hash(updateDto.password, saltRounds);
+    }
+
+    const result = await db.update(users).set(updateDto).where(eq(users.id, userId));
+
+    if (result.rowCount === 0) {
+      reply.status(404).send({ error: userNotFoundMessage });
       return;
     }
 
-    res.status(200).json({ message: 'Kullanıcı güncellendi.' });
+    reply.status(200).send({ message: 'Kullanıcı güncellendi.' });
   } catch (error) {
     console.error('Failed to patch user: ', error);
-    res.status(500).json({ error: 'Kullanıcı düzenlenirken bir hata ile karşılaşıldı.' });
+    reply.status(500).send({ error: 'Kullanıcı düzenlenirken bir hata ile karşılaşıldı.' });
   }
 };
 
-export const deleteUser = async (req: Request, res: Response) => {
+export const deleteUser = async (
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) => {
   try {
-    const user = await fetchUserById(req, res);
+    const user = await fetchUserById(request, reply);
     if (!user) return;
 
-    await User.destroy({
-      where: { id: user.id },
-    });
+    const result = await db.delete(users).where(eq(users.id, user.id));
+
+    if (result.rowCount === 0) {
+      reply.status(404).send({ error: userNotFoundMessage });
+      return;
+    }
+
+    reply.status(200).send({ message: 'Kullanıcı silindi.' });
   } catch (error) {
     console.error('Failed to delete user: ', error);
-    res.status(500).json({ error: 'Kullanıcı silinirken bir hata ile karşılaşıldı.' });
+    reply.status(500).send({ error: 'Kullanıcı silinirken bir hata ile karşılaşıldı.' });
   }
 };
 
-export const deleteUsers = async (req: Request, res: Response) => {
+export const deleteUsers = async (
+  request: FastifyRequest<{ Body: { ids: string[] } }>,
+  reply: FastifyReply,
+) => {
   try {
-    const { ids }: { ids: string[] } = req.body;
+    const { ids } = request.body;
 
     if (!ids || ids.length === 0) {
-      res.status(400).json({ error: "Kullanici ID'leri gereklidir." });
+      reply.status(400).send({ error: "Kullanıcı ID'leri gereklidir." });
       return;
     }
 
-    const invalidIds = ids.filter((id) => isNaN(Number(id)));
+    const parsedIds = ids.map((id) => parseInt(id, 10));
+    const invalidIds = parsedIds.filter((id) => isNaN(id));
     if (invalidIds.length > 0) {
-      res.status(400).json({ error: "Geçersiz ID'ler sağlandı." });
+      reply.status(400).send({ error: "Geçersiz ID'ler sağlandı." });
       return;
     }
 
-    const deletedRows = await User.destroy({
-      where: { id: ids },
+    const existingUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.id, parsedIds));
+
+    const existingIds = new Set(existingUsers.map((u) => u.id));
+
+    const result = await db.delete(users).where(inArray(users.id, parsedIds));
+
+    if (result.rowCount === 0) {
+      reply.status(404).send({ error: userNotFoundMessage });
+      return;
+    }
+
+    const results = ids.map((id) => {
+      const numId = parseInt(id, 10);
+      return {
+        id,
+        status: existingIds.has(numId),
+        message: existingIds.has(numId) ? 'Kullanıcı silindi' : 'Kullanıcı bulunamadı',
+      };
     });
 
-    if (deletedRows === 0) {
-      res.status(404).json({ error: userNotFoundMessage });
+    if (result.rowCount !== ids.length) {
+      reply.status(200).send({
+        error: 'Bazı kullanıcılar silindi, bazıları bulunamadı.',
+        results,
+      });
       return;
     }
 
-    res.status(200).json({ message: 'Silme operasyonu hatasız geçti', deletedRows });
+    reply.status(200).send({
+      message: 'Silme operasyonu hatasız geçti',
+      deletedRows: result.rowCount,
+      results,
+    });
   } catch (error) {
     console.error('An error occurred while deleting users: ', error);
-    res.status(500).json({ error: 'Kullanıcılar silinirken bir hata ile karşılaşıldı.' });
+    reply.status(500).send({
+      error: 'Kullanıcılar silinirken bir hata ile karşılaşıldı.',
+    });
   }
 };

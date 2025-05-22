@@ -1,26 +1,38 @@
-import User from '../models/User.ts';
-import { type WithUnknown } from '../types/WithUnknown.ts';
+import { z } from 'zod';
 
-interface Validations {
-  errors: string[];
-  isValid: boolean;
+const CreateUserSchema = z.object({
+  name: z.string().min(1, 'İsim gereklidir.'),
+  email: z.string().email('Geçerli bir email gereklidir.'),
+  password: z.string().min(6, 'Şifre en az 6 karakter olmalı.'),
+  role: z.string().optional(),
+  phone: z.string().optional(),
+});
+
+const UpdateUserSchema = z
+  .object({
+    name: z.string().min(1, 'İsim geçersiz.').optional(),
+    email: z.string().email('Geçersiz e-posta').optional(),
+    password: z.string().min(6, 'Şifre en az 6 karakter olmalı.').optional(),
+    phone: z.string().min(1, 'Telefon geçersiz.').optional(),
+    role: z.string().min(1, 'Rol geçersiz.').optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'En az bir alan güncellenmelidir.',
+  });
+
+export type CreateUserDto = z.infer<typeof CreateUserSchema>;
+export type UpdateUserDto = z.infer<typeof UpdateUserSchema>;
+
+export function validateCreateUser(body: unknown) {
+  const result = CreateUserSchema.safeParse(body);
+  return result.success
+    ? { isValid: true, value: result.data }
+    : { isValid: false, errors: result.error.errors.map((e) => e.message) };
 }
 
-export const validateUser = (user: WithUnknown<User>): Validations => {
-  const errors: string[] = [];
-
-  if (typeof user.name !== 'string' || user.name.length < 2) {
-    errors.push('Kullanıcı isminin en az 2 karakteri olmalıdır.');
-  }
-  if (typeof user.email !== 'string' || !/\S+@\S+\.\S+/.test(user.email)) {
-    errors.push('E-posta geçerli bir e-posta olmalıdır.');
-  }
-  if (typeof user.password !== 'string' || user.password.length < 8) {
-    errors.push('Parola en az 8 karakter olmalıdır.');
-  }
-
-  return {
-    errors,
-    isValid: errors.length === 0,
-  };
-};
+export function validateUpdateUser(body: unknown) {
+  const result = UpdateUserSchema.safeParse(body);
+  return result.success
+    ? { isValid: true, value: result.data }
+    : { isValid: false, errors: result.error.errors.map((e) => e.message) };
+}
