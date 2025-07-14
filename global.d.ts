@@ -1,5 +1,5 @@
-declare module '@fastify/session' {
-  interface FastifySessionObject {
+export declare module 'fastify' {
+  interface Session {
     selectedCompanyId?: string;
     wsSessionId?: string;
   }

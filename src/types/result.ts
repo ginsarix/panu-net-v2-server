@@ -1,5 +1,3 @@
-export type PureResult<T> = readonly [
-  error: string | null,
-  returned: T | null,
-  statusCode?: number,
-];
+import { TRPC_ERROR_CODE_KEY } from '@trpc/server';
+
+export type Result<T> = readonly [message: string | null, statusCode: TRPC_ERROR_CODE_KEY | null, result: T | null];

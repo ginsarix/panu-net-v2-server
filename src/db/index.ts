@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import dotenv from 'dotenv';
+
+import { schema } from './schema/schema.ts';
 
 dotenv.config();
 
@@ -12,4 +14,4 @@ const pool = new Pool({
   port: 5432,
 });
 
-export const db = drizzle(pool);
+export const db = drizzle(pool, { schema, logger: true });

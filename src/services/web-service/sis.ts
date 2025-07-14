@@ -1,28 +1,41 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
-import myAxios from '../services/api-base.ts';
-import { getCompanyById } from './companiesDb.ts';
-import { WsResponse } from '../types/web-service.ts';
-import { constructLogin } from '../utils/web-service.ts';
+import { FastifyRequest } from 'fastify';
 
-export const login = async (request: FastifyRequest, reply: FastifyReply) => {
+import myAxios from '../../services/api-base.ts';
+import { WsResponse } from '../../types/web-service.ts';
+import { constructLogin, sourceWithSlash } from '../../utils/web-service.ts';
+import { getCompanyById } from '../companiesDb.ts';
+import { TRPCError } from '@trpc/server';
+import { unexpectedErrorMessage } from '../../constants/messages.ts';
+
+const sisEndpoint = 'sis/json';
+
+const sourceWithSis = (wsSource: string) => {
+  sourceWithSlash(wsSource);
+
+  return wsSource + sisEndpoint;
+};
+
+export const login = async (request: FastifyRequest) => {
   if (!request.session.selectedCompanyId) {
-    reply.status(400).send({ error: 'Seçili şirket bulunamadı.' });
-    return;
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Seçili şirket bulunamadı.'
+    });
   }
 
-  const [message, statusCode, result] = await getCompanyById(request.session.selectedCompanyId);
+  const [message, code, result] = await getCompanyById(request.session.selectedCompanyId);
   if (!result) {
-    reply.status(statusCode).send({ error: message });
-    return;
+    throw new TRPCError({
+      code: code || 'INTERNAL_SERVER_ERROR',
+      message: message || unexpectedErrorMessage,
+    });
   }
-
-  const wsSource = result.webServiceSource.endsWith('/') ? result.webServiceSource : result.webServiceSource + '/';
 
   const response = await myAxios.post<WsResponse>(
-    wsSource + 'sis/json',
+    sourceWithSis(result.webServiceSource),
     constructLogin(result.webServiceUsername, result.apiSecret, { apikey: result.apiKey }),
   );
 
-  if (response.status === 200) request.session.wsSessionId = response.data.msg;
+  if (response.data.code === '200') request.session.wsSessionId = response.data.msg;
   else console.error(response);
-}
+};

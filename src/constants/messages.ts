@@ -1,0 +1,19 @@
+export const unexpectedErrorMessage = 'Beklenmedik bir hata oluştu.';
+
+export const idInvalidMessage = 'ID geçersiz.';
+
+export const userIdRequiredMessage = "Kullanıcı ID'si gereklidir.";
+export const userNotFoundMessage = 'Kullanıcı bulunamadı.';
+export const couldntFetchUsersMessage = 'Kullanıcılar getirilemedi.';
+
+export const companyIdRequiredMessage = "Şirket ID'si gereklidir.";
+export const companyNotFoundMessage = 'Şirket bulunamadı';
+export const couldntFetchCompaniesMessage = 'Şirketler getirilemedi.';
+
+export const requiredFieldMessage = 'Bu alan gereklidir.';
+export const nameRequiredMessage = 'İsim gereklidir.';
+export const emailInvalidMessage = 'E-posta geçersiz.';
+export const passwordAtleast8CharactersMessage = 'Şifre en az 8 karakter olmalı.';
+export const phoneInvalidMessage = 'Telefon geçersiz.';
+export const roleInvalidMessage = 'Rol geçersiz.';
+export const updateAtleast1FieldMessage = 'En az bir alan güncellenmelidir.';
