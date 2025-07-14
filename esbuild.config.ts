@@ -8,7 +8,7 @@ esbuild
     platform: 'node',
     target: 'esnext',
     format: 'esm',
-    outdir: 'dist',
+    external: ['aws-sdk', 'mock-aws-s3', 'nock', '@mapbox/node-pre-gyp'],
     sourcemap: true,
     minify: false, // reminder for future set this to true on prod
   })
