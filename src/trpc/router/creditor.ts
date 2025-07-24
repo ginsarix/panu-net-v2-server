@@ -2,25 +2,25 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { publicProcedure, router } from '../';
-import { scfEndpoint } from '../../constants/endpoints.ts';
+import { scfEndpoint } from '../../constants/endpoints';
 import {
   badRequestMessage,
   notFoundMessage,
   selectedCompanyNotFoundMessage,
   serverErrorMessage,
   unexpectedErrorMessage,
-} from '../../constants/messages.ts';
+} from '../../constants/messages';
 import myAxios from '../../services/api-base.ts';
-import { getCompanyById } from '../../services/companiesDb.ts';
-import { login } from '../../services/web-service/sis.ts';
+import { getCompanyById } from '../../services/companiesDb';
+import { login } from '../../services/web-service/sis';
 import { WsScfListResponse } from '../../types/web-service.ts';
-import { parseIntBase10 } from '../../utils/parsing.ts';
-import { sourceWithSlash } from '../../utils/web-service.ts';
+import { parseIntBase10 } from '../../utils/parsing';
+import { sourceWithSlash } from '../../utils/web-service';
 
 const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;
 
-export const debtorRouter = router({
-  getDebtors: publicProcedure
+export const creditorRouter = router({
+  getCreditors: publicProcedure
     .input(
       z.object({
         companyCode: z.string(),
@@ -47,24 +47,24 @@ export const debtorRouter = router({
           });
         }
 
-        const debtorsParams = {
+        const creditorsParams = {
           scf_carikart_listele: {
             session_id: ctx.req.session.wsSessionId,
             firma_kodu: Number(input.companyCode),
             donem_kodu:
               typeof input.periodCode === 'string' ? Number(input.periodCode) : input.periodCode,
-            filters: [{ field: 'ba', operator: '=', value: '(B)' }],
+            filters: [{ field: 'ba', operator: '=', value: '(A)' }],
             params: {
               selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
             },
           },
         };
 
-        console.log(debtorsParams);
+        console.log(creditorsParams);
 
         const scfResponse = await myAxios.post<WsScfListResponse>(
           sourceWithScf(result.webServiceSource),
-          debtorsParams,
+          creditorsParams,
         );
 
         const responseCode = parseIntBase10(scfResponse.data.code || '500');
@@ -89,16 +89,16 @@ export const debtorRouter = router({
         }
 
         return {
-          message: scfResponse?.data.msg,
-          payload: scfResponse?.data,
+          message: scfResponse.data.msg,
+          payload: scfResponse.data,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('Failed to get debtors: ', error);
+        console.error('Failed to get creditors: ', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Borçlu cariler getirilirken bir hata ile karşılaşıldı.',
+          message: 'Alacaklı cariler getirilirken bir hata ile karşılaşıldı.',
         });
       }
     }),

@@ -1,26 +1,27 @@
 import { TRPCError } from '@trpc/server';
-import { asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { publicProcedure, router } from '../';
+import { authorizedProcedure, protectedProcedure, router } from '../';
 import {
   companyNotFoundMessage,
   couldntFetchCompaniesMessage,
+  noCompanyAccessMessage,
+  unauthorizedErrorMessage,
   unexpectedErrorMessage,
 } from '../../constants/messages.ts';
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.ts';
-import { CACHE_TTL } from '../../constants/redis.ts';
 import { db } from '../../db';
 import { companies } from '../../db/schema/company.ts';
+import { usersToCompanies } from '../../db/schema/user-company.ts';
 import { getCompanyById } from '../../services/companiesDb.ts';
-import { getRedis, ttlToHeader } from '../../services/redis.ts';
 import {
   CreateCompanySchema,
   UpdateCompanySchema,
 } from '../../services/zod-validations/company.ts';
 
 export const companyRouter = router({
-  getCompanies: publicProcedure
+  getCompanies: protectedProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
@@ -36,24 +37,8 @@ export const companyRouter = router({
       try {
         const { page, itemsPerPage, sort, order, search } = input;
         const skip = (page - 1) * itemsPerPage;
-        const redis = getRedis();
-
-        const cacheKey = `companies:${page}:${itemsPerPage}:${sort}:${order}:${search}`;
-        const countKey = `companies:count:${search}`;
-
-        const [cachedCompanies, cachedCount] = await Promise.all([
-          redis.get(cacheKey),
-          redis.get(countKey),
-        ]);
-
-        if (cachedCompanies && cachedCount) {
-          ctx.res.header('X-Cache-Status', 'HIT');
-          await ttlToHeader(cacheKey, ctx.res);
-          return {
-            companies: JSON.parse(cachedCompanies) as (typeof companies.$inferSelect)[],
-            total: parseInt(cachedCount),
-          };
-        }
+        const userId = Number(ctx.user.id);
+        const isAdmin = ctx.user.role === 'admin';
 
         const sortableColumns = {
           creationDate: companies.creationDate,
@@ -69,35 +54,58 @@ export const companyRouter = router({
         const sortFn = order === 'asc' ? asc : desc;
         const whereClause = search ? ilike(companies.name, `%${search}%`) : undefined;
 
-        const [fetchedCompanies, totalCount] = await Promise.all([
-          db.query.companies.findMany({
-            where: whereClause,
-            orderBy: sortFn(sortColumn),
-            offset: skip,
-            limit: itemsPerPage,
-          }),
-          db
-            .select({
-              total: sql<number>`COUNT
-                (*)`,
-            })
+        if (isAdmin) {
+          const query = db
+            .select()
             .from(companies)
-            .where(whereClause ?? sql`TRUE`),
-        ]);
+            .where(whereClause ?? sql`TRUE`);
 
-        await Promise.all([
-          redis.set(cacheKey, JSON.stringify(fetchedCompanies)),
-          redis.expire(cacheKey, CACHE_TTL),
-          redis.set(countKey, totalCount[0].total),
-          redis.expire(countKey, CACHE_TTL),
-        ]);
+          const totalCountQuery = db
+            .select({ total: sql<number>`count(*)` })
+            .from(companies)
+            .where(whereClause ?? sql`TRUE`);
 
-        ctx.res.header('X-Cache-Status', 'MISS');
-        return {
-          companies: fetchedCompanies,
-          total: totalCount[0].total,
-          cached: false,
-        };
+          const [fetchedCompanies, totalCountResult] = await Promise.all([
+            query.orderBy(sortFn(sortColumn)).offset(skip).limit(itemsPerPage),
+            totalCountQuery,
+          ]);
+
+          const total = totalCountResult[0]?.total ?? 0;
+
+          return {
+            companies: fetchedCompanies,
+            total,
+          };
+        } else {
+          const conditions = [eq(usersToCompanies.userId, userId)];
+          if (whereClause) {
+            conditions.push(whereClause);
+          }
+
+          const query = db
+            .select()
+            .from(companies)
+            .innerJoin(usersToCompanies, eq(companies.id, usersToCompanies.companyId))
+            .where(and(...conditions));
+
+          const totalCountQuery = db
+            .select({ total: sql<number>`count(*)` })
+            .from(companies)
+            .innerJoin(usersToCompanies, eq(companies.id, usersToCompanies.companyId))
+            .where(and(...conditions));
+
+          const [fetchedCompanies, totalCountResult] = await Promise.all([
+            query.orderBy(sortFn(sortColumn)).offset(skip).limit(itemsPerPage),
+            totalCountQuery,
+          ]);
+
+          const total = totalCountResult[0]?.total ?? 0;
+
+          return {
+            companies: fetchedCompanies.map((c) => c.companies),
+            total,
+          };
+        }
       } catch (error) {
         console.error('Failed to fetch companies: ', error);
         throw new TRPCError({
@@ -107,10 +115,22 @@ export const companyRouter = router({
       }
     }),
 
-  getCompany: publicProcedure
+  getCompany: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
+        const userId = Number(ctx.user.id);
+        const userCompany = await db
+          .select()
+          .from(usersToCompanies)
+          .where(
+            and(eq(usersToCompanies.userId, userId), eq(usersToCompanies.companyId, input.id)),
+          );
+        if (!userCompany.length)
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'You do not have access to this company.',
+          });
         const [message, code, result] = await getCompanyById(input.id);
 
         if (!result) {
@@ -131,7 +151,7 @@ export const companyRouter = router({
       }
     }),
 
-  createCompany: publicProcedure.input(CreateCompanySchema).mutation(async ({ input }) => {
+  createCompany: authorizedProcedure.input(CreateCompanySchema).mutation(async ({ input }) => {
     try {
       await db.insert(companies).values(input);
       return { message: 'Şirket başarıyla oluşturuldu.' };
@@ -144,20 +164,36 @@ export const companyRouter = router({
     }
   }),
 
-  updateCompany: publicProcedure
+  updateCompany: protectedProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
         data: UpdateCompanySchema,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const { id, data: updateDto } = input;
+        const isAdmin = ctx.user.role === 'admin';
+        const userId = Number(ctx.user.id);
+
+        if (!isAdmin) {
+          const userCompany = await db
+            .select()
+            .from(usersToCompanies)
+            .where(and(eq(usersToCompanies.userId, userId), eq(usersToCompanies.companyId, id)));
+
+          if (!userCompany.length) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: unauthorizedErrorMessage,
+            });
+          }
+        }
 
         const result = await db.update(companies).set(updateDto).where(eq(companies.id, id));
 
-        if (result.rowCount === 0) {
+        if (!result.rowCount) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: companyNotFoundMessage,
@@ -175,7 +211,7 @@ export const companyRouter = router({
       }
     }),
 
-  deleteCompany: publicProcedure
+  deleteCompany: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
       try {
@@ -197,7 +233,7 @@ export const companyRouter = router({
 
         const deleteResult = await db.delete(companies).where(eq(companies.id, result.id));
 
-        if (deleteResult.rowCount === 0) {
+        if (!deleteResult.rowCount) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: companyNotFoundMessage,
@@ -215,47 +251,44 @@ export const companyRouter = router({
       }
     }),
 
-  deleteCompanies: publicProcedure
+  deleteCompanies: authorizedProcedure
     .input(z.object({ ids: z.array(z.number().int().positive()) }))
     .mutation(async ({ input }) => {
       try {
         const { ids } = input;
 
-        if (ids.length === 0) {
+        if (!ids.length) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: "Şirket ID'leri gereklidir.",
           });
         }
 
-        const existingCompanies = await db
-          .select({ id: companies.id })
-          .from(companies)
-          .where(inArray(companies.id, ids));
+        const result = await db
+          .delete(companies)
+          .where(inArray(companies.id, ids))
+          .returning({ id: companies.id });
 
-        const existingIds = new Set(existingCompanies.map(c => c.id));
-
-        const result = await db.delete(companies).where(inArray(companies.id, ids));
-
-        if (result.rowCount === 0) {
+        if (!result.length) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: companyNotFoundMessage,
           });
         }
 
-        const results = ids.map(id => ({
+        const deletedIds = result.map((r) => r.id);
+        const results = ids.map((id) => ({
           id,
-          status: existingIds.has(id),
-          message: existingIds.has(id) ? 'Şirket silindi' : 'Şirket bulunamadı',
+          status: deletedIds.includes(id),
+          message: deletedIds.includes(id) ? 'Şirket silindi' : 'Bu şirkete erişiminiz yok.',
         }));
 
         return {
           message:
-            result.rowCount !== ids.length
+            result.length !== ids.length
               ? 'Bazı şirketler silindi, bazıları bulunamadı.'
               : 'Silme operasyonu hatasız geçti',
-          deletedRows: result.rowCount,
+          deletedRows: result.length,
           results,
         };
       } catch (error) {
@@ -268,18 +301,26 @@ export const companyRouter = router({
       }
     }),
 
-  selectCompany: publicProcedure
+  selectCompany: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(({ input, ctx }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
-        if (ctx.req.session) {
-          ctx.req.session.selectedCompanyId = String(input.id);
-        } else {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Session bulunamadı.',
-          });
+        if (ctx.user.role === 'user') {
+          const userId = Number(ctx.user.id);
+          const userCompany = await db
+            .select()
+            .from(usersToCompanies)
+            .where(
+              and(eq(usersToCompanies.userId, userId), eq(usersToCompanies.companyId, input.id)),
+            );
+          if (!userCompany.length) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: noCompanyAccessMessage,
+            });
+          }
         }
+        ctx.req.session.selectedCompanyId = String(input.id);
 
         return { message: 'Şirket başarıyla seçildi.' };
       } catch (error) {
@@ -292,15 +333,8 @@ export const companyRouter = router({
       }
     }),
 
-  getSelectedCompany: publicProcedure.query(({ ctx }): { message: string; id: string } => {
+  getSelectedCompany: protectedProcedure.query(({ ctx }) => {
     try {
-      if (!ctx.req.session) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Session bulunamadı.',
-        });
-      }
-
       const id = ctx.req.session.selectedCompanyId;
       if (!id) {
         throw new TRPCError({

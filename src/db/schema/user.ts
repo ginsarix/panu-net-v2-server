@@ -9,4 +9,5 @@ export const users = pgTable('users', {
   role: varchar('role', { length: 32 }).notNull().default('user'),
   creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
   updatedOn: timestamp('updated_on', { withTimezone: true }).notNull().defaultNow(),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
 });

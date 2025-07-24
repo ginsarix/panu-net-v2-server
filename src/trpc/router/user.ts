@@ -3,14 +3,17 @@ import * as bcrypt from 'bcrypt';
 import { asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { publicProcedure, router } from '../';
+import { authorizedProcedure, router } from '../';
 import { saltRounds } from '../../constants/auth.ts';
-import { couldntFetchUsersMessage, userNotFoundMessage } from '../../constants/messages.ts';
+import {
+  couldntFetchUsersMessage,
+  emailAlreadyExistsMessage,
+  userNotFoundMessage,
+} from '../../constants/messages.ts';
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.ts';
-import { CACHE_TTL } from '../../constants/redis.ts';
 import { db } from '../../db';
 import { users } from '../../db/schema/user';
-import { getRedis, ttlToHeader } from '../../services/redis.ts';
+import { usersToCompanies } from '../../db/schema/user-company.ts';
 import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.ts';
 import { PublicUser, User } from '../../types/user.ts';
 
@@ -21,7 +24,7 @@ const stripSensitive = (user: User): PublicUser => {
 };
 
 export const userRouter = router({
-  getUsers: publicProcedure
+  getUsers: authorizedProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
@@ -31,28 +34,10 @@ export const userRouter = router({
         search: z.string().default(''),
       }),
     )
-    .query(async ({ input, ctx }) => {
+    .query(async ({ input }) => {
       try {
         const { page, itemsPerPage, sort, order, search } = input;
         const skip = (page - 1) * itemsPerPage;
-        const redis = getRedis();
-
-        const cacheKey = `users:${page}:${itemsPerPage}:${sort}:${order}:${search}`;
-        const countKey = `users:count:${search}`;
-
-        const [cachedUsers, cachedCount] = await Promise.all([
-          redis.get(cacheKey),
-          redis.get(countKey),
-        ]);
-
-        if (cachedUsers && cachedCount) {
-          ctx.res.header('X-Cache-Status', 'HIT');
-          await ttlToHeader(cacheKey, ctx.res);
-          return {
-            users: JSON.parse(cachedUsers) as PublicUser[],
-            total: parseInt(cachedCount),
-          };
-        }
 
         const sortableColumns = {
           creationDate: users.creationDate,
@@ -66,12 +51,13 @@ export const userRouter = router({
         const whereClause = search ? ilike(users.name, `%${search}%`) : undefined;
 
         const [fetchedUsers, totalCount] = await Promise.all([
-          db.query.users.findMany({
-            where: whereClause,
-            orderBy: sortFn(sortColumn),
-            offset: skip,
-            limit: itemsPerPage,
-          }),
+          await db
+            .select()
+            .from(users)
+            .where(whereClause)
+            .orderBy(sortFn(sortColumn))
+            .offset(skip)
+            .limit(itemsPerPage),
           db
             .select({
               total: sql<number>`COUNT
@@ -83,17 +69,9 @@ export const userRouter = router({
 
         const result = fetchedUsers.map(stripSensitive);
 
-        await Promise.all([
-          redis.set(cacheKey, JSON.stringify(result)),
-          redis.expire(cacheKey, CACHE_TTL),
-          redis.set(countKey, totalCount[0].total),
-          redis.expire(countKey, CACHE_TTL),
-        ]);
-
         return {
           users: result,
           total: totalCount[0].total,
-          cached: false,
         };
       } catch (error) {
         console.error('Failed to fetch users: ', error);
@@ -104,15 +82,11 @@ export const userRouter = router({
       }
     }),
 
-  getUser: publicProcedure
+  getUser: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input }) => {
       try {
-        const user = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, input.id))
-          .then(rows => rows[0]);
+        const [user] = await db.select().from(users).where(eq(users.id, input.id));
 
         if (!user) {
           throw new TRPCError({
@@ -132,12 +106,24 @@ export const userRouter = router({
       }
     }),
 
-  createUser: publicProcedure.input(CreateUserSchema).mutation(async ({ input }) => {
+  createUser: authorizedProcedure.input(CreateUserSchema).mutation(async ({ input }) => {
     try {
-      const userDto = { ...input };
-      userDto.password = await bcrypt.hash(userDto.password, saltRounds);
+      const emailAlreadyExists = (await db.select().from(users).where(eq(users.email, input.email)))
+        .length;
 
-      await db.insert(users).values(userDto);
+      if (emailAlreadyExists) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: emailAlreadyExistsMessage,
+        });
+      }
+
+      input.password = await bcrypt.hash(input.password, saltRounds);
+
+      const [user] = await db.insert(users).values(input).returning({ id: users.id });
+
+      const relationValues = input.companies.map((c) => ({ userId: user.id, companyId: c }));
+      await db.insert(usersToCompanies).values(relationValues);
 
       return { message: 'Kullanıcı başarıyla oluşturuldu.' };
     } catch (error) {
@@ -149,7 +135,7 @@ export const userRouter = router({
     }
   }),
 
-  updateUser: publicProcedure
+  updateUser: authorizedProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -158,13 +144,23 @@ export const userRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        const { id, data: updateDto } = input;
+        if (input.data.email) {
+          const emailAlreadyExists =
+            (await db.select().from(users).where(eq(users.email, input.data.email))).length > 0;
 
-        if (updateDto.password) {
-          updateDto.password = await bcrypt.hash(updateDto.password, saltRounds);
+          if (emailAlreadyExists) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: emailAlreadyExistsMessage,
+            });
+          }
         }
 
-        const result = await db.update(users).set(updateDto).where(eq(users.id, id));
+        if (input.data.password) {
+          input.data.password = await bcrypt.hash(input.data.password, saltRounds);
+        }
+
+        const result = await db.update(users).set(input.data).where(eq(users.id, input.id));
 
         if (result.rowCount === 0) {
           throw new TRPCError({
@@ -184,15 +180,11 @@ export const userRouter = router({
       }
     }),
 
-  deleteUser: publicProcedure
+  deleteUser: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
       try {
-        const user = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, input.id))
-          .then(rows => rows[0]);
+        const [user] = await db.select().from(users).where(eq(users.id, input.id));
 
         if (!user) {
           throw new TRPCError({
@@ -221,7 +213,7 @@ export const userRouter = router({
       }
     }),
 
-  deleteUsers: publicProcedure
+  deleteUsers: authorizedProcedure
     .input(z.object({ ids: z.array(z.number().int().positive()) }))
     .mutation(async ({ input }) => {
       try {
@@ -239,7 +231,7 @@ export const userRouter = router({
           .from(users)
           .where(inArray(users.id, ids));
 
-        const existingIds = new Set(existingUsers.map(u => u.id));
+        const existingIds = new Set(existingUsers.map((u) => u.id));
 
         const result = await db.delete(users).where(inArray(users.id, ids));
 
@@ -250,7 +242,7 @@ export const userRouter = router({
           });
         }
 
-        const results = ids.map(id => ({
+        const results = ids.map((id) => ({
           id,
           status: existingIds.has(id),
           message: existingIds.has(id) ? 'Kullanıcı silindi' : 'Kullanıcı bulunamadı',

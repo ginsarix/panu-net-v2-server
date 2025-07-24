@@ -1,6 +1,14 @@
-export declare module 'fastify' {
+import 'fastify';
+
+declare module 'fastify' {
   interface Session {
+    login?: {
+      id: string;
+      name: string;
+      email: string;
+      role: 'user' | 'admin';
+    };
+    wsSessionId?: string; // ws means web service here
     selectedCompanyId?: string;
-    wsSessionId?: string;
   }
 }

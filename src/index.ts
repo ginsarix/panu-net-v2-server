@@ -1,3 +1,4 @@
+import compress from '@fastify/compress';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyRedis from '@fastify/redis';
@@ -7,6 +8,9 @@ import * as dotenv from 'dotenv';
 import Fastify from 'fastify';
 import metrics from 'fastify-metrics';
 import RedisStore from 'fastify-session-redis-store';
+import { readFileSync } from 'node:fs';
+import path, { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { setRedis } from './services/redis.ts';
 import { createContext } from './trpc/context.ts';
@@ -16,8 +20,15 @@ dotenv.config();
 
 const PORT = Number(process.env.PORT) || 3000;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const fastify = Fastify({
-  maxParamLength: 5000,
+  http2: true,
+  https: {
+    key: readFileSync(path.join(__dirname, '../key.pem')),
+    cert: readFileSync(path.join(__dirname, '../cert.pem')),
+  },
 });
 
 await fastify.register(fastifyCors, {
@@ -43,7 +54,7 @@ await fastify.register(fastifySession, {
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 1000 * 60 * 60,
+    maxAge: 1000 * 60 * 60 * 8,
     sameSite: 'lax',
     domain: undefined,
   },
@@ -65,6 +76,10 @@ fastify.register(fastifyTRPCPlugin, {
   } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
 });
 
+await fastify.register(compress, {
+  global: true,
+  encodings: ['gzip'],
+});
 await fastify.register(metrics, {
   endpoint: '/metrics',
 });

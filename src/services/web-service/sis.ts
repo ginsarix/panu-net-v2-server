@@ -1,13 +1,12 @@
+import { TRPCError } from '@trpc/server';
 import { FastifyRequest } from 'fastify';
 
+import { sisEndpoint } from '../../constants/endpoints.ts';
+import { unexpectedErrorMessage } from '../../constants/messages.ts';
 import myAxios from '../../services/api-base.ts';
 import { WsResponse } from '../../types/web-service.ts';
 import { constructLogin, sourceWithSlash } from '../../utils/web-service.ts';
 import { getCompanyById } from '../companiesDb.ts';
-import { TRPCError } from '@trpc/server';
-import { unexpectedErrorMessage } from '../../constants/messages.ts';
-
-const sisEndpoint = 'sis/json';
 
 const sourceWithSis = (wsSource: string) => {
   sourceWithSlash(wsSource);
@@ -19,7 +18,7 @@ export const login = async (request: FastifyRequest) => {
   if (!request.session.selectedCompanyId) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
-      message: 'Seçili şirket bulunamadı.'
+      message: 'Seçili şirket bulunamadı.',
     });
   }
 

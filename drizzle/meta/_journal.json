@@ -29,6 +29,20 @@
       "when": 1751033471008,
       "tag": "0003_sharp_jean_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1753080011527,
+      "tag": "0004_nifty_morlocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1753274870208,
+      "tag": "0005_classy_menace",
+      "breakpoints": true
     }
   ]
 }
