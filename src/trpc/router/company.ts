@@ -15,6 +15,7 @@ import { db } from '../../db';
 import { companies } from '../../db/schema/company.ts';
 import { usersToCompanies } from '../../db/schema/user-company.ts';
 import { getCompanyById } from '../../services/companiesDb.ts';
+import { getPeriods, login } from '../../services/web-service/sis.ts';
 import {
   CreateCompanySchema,
   UpdateCompanySchema,
@@ -26,16 +27,23 @@ export const companyRouter = router({
       z.object({
         page: z.number().min(1).default(1),
         itemsPerPage: z.number().min(1).max(100).default(DEFAULT_ITEMS_PER_PAGE),
-        sort: z
-          .enum(['creationDate', 'updatedOn', 'name', 'status', 'licenseDate', 'period', 'code'])
-          .default('creationDate'),
-        order: z.enum(['asc', 'desc']).default('desc'),
+        sortBy: z
+          .array(
+            z
+              .object({
+                key: z.enum(['creationDate', 'updatedOn', 'name', 'status', 'licenseDate', 'code']),
+                order: z.enum(['asc', 'desc']),
+              })
+              .strict(),
+          )
+          .default([])
+          .transform((val) => (!val.length ? [{ key: 'creationDate', order: 'desc' }] : val)),
         search: z.string().default(''),
       }),
     )
     .query(async ({ input, ctx }) => {
       try {
-        const { page, itemsPerPage, sort, order, search } = input;
+        const { page, itemsPerPage, sortBy, search } = input;
         const skip = (page - 1) * itemsPerPage;
         const userId = Number(ctx.user.id);
         const isAdmin = ctx.user.role === 'admin';
@@ -46,12 +54,11 @@ export const companyRouter = router({
           name: companies.name,
           status: companies.status,
           licenseDate: companies.licenseDate,
-          period: companies.period,
           code: companies.code,
-        };
+        } as const;
 
-        const sortColumn = sortableColumns[sort];
-        const sortFn = order === 'asc' ? asc : desc;
+        const sortColumn = sortableColumns[sortBy[0].key as keyof typeof sortableColumns];
+        const sortFn = sortBy[0].order === 'asc' ? asc : desc;
         const whereClause = search ? ilike(companies.name, `%${search}%`) : undefined;
 
         if (isAdmin) {
@@ -156,6 +163,7 @@ export const companyRouter = router({
       await db.insert(companies).values(input);
       return { message: 'Şirket başarıyla oluşturuldu.' };
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       console.error('Failed to create company: ', error);
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
@@ -280,13 +288,13 @@ export const companyRouter = router({
         const results = ids.map((id) => ({
           id,
           status: deletedIds.includes(id),
-          message: deletedIds.includes(id) ? 'Şirket silindi' : 'Bu şirkete erişiminiz yok.',
+          message: deletedIds.includes(id) ? 'Firma silindi' : 'Bu firmaya erişiminiz yok.',
         }));
 
         return {
           message:
             result.length !== ids.length
-              ? 'Bazı şirketler silindi, bazıları bulunamadı.'
+              ? 'Bazı firmalar silindi, bazıları bulunamadı.'
               : 'Silme operasyonu hatasız geçti',
           deletedRows: result.length,
           results,
@@ -296,7 +304,7 @@ export const companyRouter = router({
         console.error('An error occurred while deleting companies: ', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Şirketler silinirken bir hata ile karşılaşıldı.',
+          message: 'Firmalar silinirken bir hata ile karşılaşıldı.',
         });
       }
     }),
@@ -320,7 +328,7 @@ export const companyRouter = router({
             });
           }
         }
-        ctx.req.session.selectedCompanyId = String(input.id);
+        ctx.req.session.selectedCompanyId = input.id;
 
         return { message: 'Şirket başarıyla seçildi.' };
       } catch (error) {
@@ -333,15 +341,20 @@ export const companyRouter = router({
       }
     }),
 
-  getSelectedCompany: protectedProcedure.query(({ ctx }) => {
+  getSelectedCompany: protectedProcedure.query(async ({ ctx }) => {
     try {
       const id = ctx.req.session.selectedCompanyId;
-      if (!id) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Seçili şirket bulunamadı.',
-        });
-      }
+
+      const notFoundError = new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Seçili şirket bulunamadı.',
+      });
+
+      if (!id) throw notFoundError;
+
+      const company = await db.select().from(companies).where(eq(companies.id, id));
+
+      if (!company.length) throw notFoundError;
 
       return {
         message: 'Seçili şirket başarıyla getirildi.',
@@ -356,4 +369,52 @@ export const companyRouter = router({
       });
     }
   }),
+
+  setPeriod: protectedProcedure
+    .input(z.object({ periodCode: z.number().int().positive() }))
+    .query(({ input, ctx }) => {
+      try {
+        ctx.req.session.selectedPeriodCode = input.periodCode;
+
+        return { message: 'Dönem başarıyla seçildi.' };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        console.error('An error occurred while getting setting period: ', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Dönem seçilirken bir hata ile karşılaşıldı.',
+        });
+      }
+    }),
+
+  getSelectedPeriod: protectedProcedure.query(({ ctx }) => {
+    try {
+      return { code: ctx.req.session.selectedPeriodCode };
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      console.error('An error occurred while getting company periods: ', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Seçili Dönem getirilirken bir hata ile karşılaşıldı.',
+      });
+    }
+  }),
+
+  getPeriods: protectedProcedure
+    .input(z.object({ companyCode: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      try {
+        await login(ctx.req);
+        const response = await getPeriods(ctx.req, input.companyCode);
+
+        return response.result.m_donemler;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        console.error('An error occurred while getting company periods: ', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Dönemler getirilirken bir hata ile karşılaşıldı.',
+        });
+      }
+    }),
 });

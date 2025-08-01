@@ -24,14 +24,12 @@ This server is a Node.js backend built with [Fastify](https://www.fastify.io/) a
 - **Password hashing** with bcrypt
 - **Role-based fields** (role, email, etc.)
 - **Pagination, sorting, and search** for user lists
-- **Caching** of user lists in Redis
 
 ### 2. Company Management
 
 - **CRUD operations** for companies
 - **Select and get selected company** (session-based)
 - **Pagination, sorting, and search** for company lists
-- **Caching** of company lists in Redis
 
 ### 3. Debtor & Creditor Management
 
@@ -58,16 +56,17 @@ Each router exposes multiple procedures (queries and mutations) for CRUD and bus
 
 ### Users Table
 
-| Field        | Type      | Description        |
-| ------------ | --------- | ------------------ |
-| id           | serial    | Primary key        |
-| name         | varchar   | User's name        |
-| email        | varchar   | User's email       |
-| phone        | varchar   | User's phone       |
-| password     | varchar   | Hashed password    |
-| role         | varchar   | User role          |
-| creationDate | timestamp | Creation timestamp |
-| updatedOn    | timestamp | Last update        |
+| Field         | Type      | Description        |
+| ------------- | --------- | ------------------ |
+| id            | serial    | Primary key        |
+| name          | varchar   | User's name        |
+| email         | varchar   | User's email       |
+| phone         | varchar   | User's phone       |
+| password      | varchar   | Hashed password    |
+| role          | varchar   | User role          |
+| creationDate  | timestamp | Creation timestamp |
+| updatedOn     | timestamp | Last update        |
+| last_login_at | timestamp | Last login         |
 
 ### Companies Table
 
@@ -91,6 +90,16 @@ Each router exposes multiple procedures (queries and mutations) for CRUD and bus
 
 ---
 
+### UsersToCompanies Table
+
+| Field      | Type                    | Description        |
+| ---------- | ----------------------- | ------------------ |
+| user_id    | integer                 | Primary key        |
+| company_id | integer                 | Company code       |
+| created_at | timestamp with timezone | Creation timestamp |
+
+---
+
 ## Authentication & Session Management
 
 - **Sessions** are managed using `fastify-session` with Redis as the store.
@@ -100,17 +109,9 @@ Each router exposes multiple procedures (queries and mutations) for CRUD and bus
 
 ---
 
-## Caching
-
-- **User and company lists** are cached in Redis for performance.
-- **Cache keys** are parameterized by pagination, sorting, and search parameters.
-- **Cache TTL** is configurable.
-
----
-
 ## External Integrations
 
-- **Debtor and Creditor data** are fetched from an external web service (SIS) using company credentials.
+- **Debtor and Creditor data** are fetched from an external web service using company credentials.
 - **Session-based authentication** is performed before each external request.
 - **Responses** are parsed and errors are handled according to HTTP and business logic.
 

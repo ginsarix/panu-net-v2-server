@@ -15,9 +15,9 @@ import { db } from '../../db';
 import { users } from '../../db/schema/user';
 import { usersToCompanies } from '../../db/schema/user-company.ts';
 import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.ts';
-import { PublicUser, User } from '../../types/user.ts';
+import { User } from '../../types/user.ts';
 
-const stripSensitive = (user: User): PublicUser => {
+const stripSensitive = (user: User) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, ...rest } = user;
   return rest;
@@ -29,14 +29,24 @@ export const userRouter = router({
       z.object({
         page: z.number().min(1).default(1),
         itemsPerPage: z.number().min(1).max(100).default(DEFAULT_ITEMS_PER_PAGE),
-        sort: z.enum(['creationDate', 'updatedOn', 'name', 'email']).default('creationDate'),
-        order: z.enum(['asc', 'desc']).default('desc'),
+        sortBy: z
+          .array(
+            z
+              .object({
+                key: z.enum(['creationDate', 'updatedOn', 'name', 'email']),
+                order: z.enum(['asc', 'desc']),
+              })
+              .strict(),
+          )
+          .default([])
+          .transform((val) => (!val.length ? [{ key: 'creationDate', order: 'desc' }] : val)),
         search: z.string().default(''),
       }),
     )
     .query(async ({ input }) => {
       try {
-        const { page, itemsPerPage, sort, order, search } = input;
+        const { page, itemsPerPage, sortBy, search } = input;
+
         const skip = (page - 1) * itemsPerPage;
 
         const sortableColumns = {
@@ -44,10 +54,10 @@ export const userRouter = router({
           updatedOn: users.updatedOn,
           name: users.name,
           email: users.email,
-        };
+        } as const;
 
-        const sortColumn = sortableColumns[sort];
-        const sortFn = order === 'asc' ? asc : desc;
+        const sortColumn = sortableColumns[sortBy[0].key as keyof typeof sortableColumns];
+        const sortFn = sortBy[0].order === 'asc' ? asc : desc;
         const whereClause = search ? ilike(users.name, `%${search}%`) : undefined;
 
         const [fetchedUsers, totalCount] = await Promise.all([
@@ -74,6 +84,7 @@ export const userRouter = router({
           total: totalCount[0].total,
         };
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         console.error('Failed to fetch users: ', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
@@ -127,6 +138,7 @@ export const userRouter = router({
 
       return { message: 'Kullanıcı başarıyla oluşturuldu.' };
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       console.error('Failed to create user: ', error);
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
@@ -145,8 +157,9 @@ export const userRouter = router({
     .mutation(async ({ input }) => {
       try {
         if (input.data.email) {
-          const emailAlreadyExists =
-            (await db.select().from(users).where(eq(users.email, input.data.email))).length > 0;
+          const emailAlreadyExists = (
+            await db.select().from(users).where(eq(users.email, input.data.email))
+          ).length;
 
           if (emailAlreadyExists) {
             throw new TRPCError({
@@ -162,7 +175,7 @@ export const userRouter = router({
 
         const result = await db.update(users).set(input.data).where(eq(users.id, input.id));
 
-        if (result.rowCount === 0) {
+        if (!result.rowCount) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: userNotFoundMessage,
@@ -195,7 +208,7 @@ export const userRouter = router({
 
         const result = await db.delete(users).where(eq(users.id, user.id));
 
-        if (result.rowCount === 0) {
+        if (!result.rowCount) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: userNotFoundMessage,
@@ -219,7 +232,7 @@ export const userRouter = router({
       try {
         const { ids } = input;
 
-        if (ids.length === 0) {
+        if (!ids.length) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: "Kullanıcı ID'leri gereklidir.",
@@ -235,7 +248,7 @@ export const userRouter = router({
 
         const result = await db.delete(users).where(inArray(users.id, ids));
 
-        if (result.rowCount === 0) {
+        if (!result.rowCount) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: userNotFoundMessage,

@@ -1,4 +1,5 @@
-import { WsLoginRequest } from '../types/web-service.ts';
+import { sisEndpoint } from '../constants/endpoints.ts';
+import { WsGetPeriodsRequest, WsLoginRequest } from '../types/web-service.ts';
 
 export const constructLogin = (
   username: string,
@@ -16,6 +17,26 @@ export const constructLogin = (
   };
 };
 
+export const constructGetPeriods = (
+  sessionId: string,
+  companyCode: number,
+  params: Record<string, unknown> = {},
+): WsGetPeriodsRequest => {
+  return {
+    sis_firma_getir: {
+      session_id: sessionId,
+      firma_kodu: companyCode,
+      params,
+    },
+  };
+};
+
 export const sourceWithSlash = (wsSource: string) => {
   return wsSource.endsWith('/') ? wsSource : wsSource + '/';
+};
+
+export const sourceWithSis = (wsSource: string) => {
+  sourceWithSlash(wsSource);
+
+  return wsSource + sisEndpoint;
 };

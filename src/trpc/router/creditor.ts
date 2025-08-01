@@ -23,8 +23,7 @@ export const creditorRouter = router({
   getCreditors: publicProcedure
     .input(
       z.object({
-        companyCode: z.string(),
-        periodCode: z.union([z.string(), z.number()]),
+        companyCode: z.number().int().positive(),
       }),
     )
     .query(async ({ input, ctx }) => {
@@ -50,9 +49,8 @@ export const creditorRouter = router({
         const creditorsParams = {
           scf_carikart_listele: {
             session_id: ctx.req.session.wsSessionId,
-            firma_kodu: Number(input.companyCode),
-            donem_kodu:
-              typeof input.periodCode === 'string' ? Number(input.periodCode) : input.periodCode,
+            firma_kodu: input.companyCode,
+            donem_kodu: ctx.req.session.selectedPeriodCode ?? 0,
             filters: [{ field: 'ba', operator: '=', value: '(A)' }],
             params: {
               selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],

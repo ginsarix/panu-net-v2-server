@@ -45,7 +45,9 @@ export const authRouter = router({
     try {
       const [user] = await db.select().from(users).where(eq(users.email, input.email));
 
-      const passwordCorrect = user ? await bcrypt.compare(input.password, user.password) : false;
+      const fakeHash = '$2b$12$invalidhashstringforcomparison123456789012345678901234';
+      const passwordCorrect = await bcrypt.compare(input.password, user?.password ?? fakeHash);
+
       if (!user || !passwordCorrect) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
@@ -64,7 +66,7 @@ export const authRouter = router({
         ctx.req.session.login = {
           id: String(user.id),
           name: user.name,
-          email: user.email,
+          email: input.email.trim().toLowerCase(),
           role: user.role as 'user' | 'admin',
         };
         return { success: true };
@@ -82,9 +84,14 @@ export const authRouter = router({
         verificationCode,
       };
       await redis.set(redisKey, JSON.stringify(redisValue), 'EX', OTP_TTL);
-      sendOtpEmail(input.email, verificationCode).catch((err) => {
-        console.error('Failed to send OTP email:', err);
+
+      // mmmm...
+      setImmediate(() => {
+        sendOtpEmail(input.email, verificationCode).catch((err) => {
+          console.error('Failed to send OTP email:', err);
+        });
       });
+
       return { otpIdentifier };
     } catch (error) {
       if (error instanceof TRPCError) throw error;

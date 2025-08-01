@@ -7,5 +7,3 @@ export interface User {
   creationDate: Date;
   updatedOn: Date;
 }
-
-export type PublicUser = Omit<User, 'password'>;

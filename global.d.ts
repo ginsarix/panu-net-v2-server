@@ -9,6 +9,7 @@ declare module 'fastify' {
       role: 'user' | 'admin';
     };
     wsSessionId?: string; // ws means web service here
-    selectedCompanyId?: string;
+    selectedCompanyId?: number;
+    selectedPeriodCode?: number;
   }
 }

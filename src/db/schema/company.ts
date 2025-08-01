@@ -2,7 +2,7 @@ import { boolean, integer, pgTable, serial, timestamp, varchar } from 'drizzle-o
 
 export const companies = pgTable('companies', {
   id: serial('id').primaryKey(),
-  code: varchar('code', { length: 255 }).notNull(),
+  code: integer('code').notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   manager: varchar('manager', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 32 }),
@@ -11,7 +11,6 @@ export const companies = pgTable('companies', {
   webServiceSource: varchar('web_service_source', { length: 255 }).notNull(),
   webServiceUsername: varchar('web_service_username', { length: 255 }).notNull(),
   serverName: varchar('server_name', { length: 255 }).notNull(),
-  period: integer('period').notNull(),
   apiKey: varchar('api_key', { length: 255 }).notNull(),
   apiSecret: varchar('api_secret', { length: 255 }).notNull(),
   creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
