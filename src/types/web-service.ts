@@ -3,8 +3,13 @@ export interface WsResponse {
   msg: string;
 }
 
-export interface WsGenericParams {
-  params: Record<string, unknown>;
+export type WsFilterOperators = '<' | '>' | '<=' | '>=' | '!' | '=' | 'IN' | 'NOT IN';
+export type WsFilters = { field: string; operator: WsFilterOperators; value: string }[];
+export interface WsRequestGenerics {
+  params?: Record<string, unknown>;
+  filters?: WsFilters;
+  limit?: number;
+  offset?: number;
 }
 
 export interface WsLoginRequest {
@@ -12,26 +17,48 @@ export interface WsLoginRequest {
     username: string;
     password: string;
     disconnect_same_user: 'True' | 'False';
-  } & WsGenericParams;
+  } & WsRequestGenerics;
+}
+
+export interface WsGetAccountCardListRequest {
+  scf_carikart_listele: {
+    session_id: string;
+    firma_kodu: string;
+    donem_kodu: number;
+  } & WsRequestGenerics;
 }
 
 export interface WsGetPeriodsRequest {
   sis_firma_getir: {
     session_id: string;
-    firma_kodu: number;
-  } & WsGenericParams;
+    firma_kodu: string;
+  } & WsRequestGenerics;
+}
+
+export interface WsGetCreditCountRequest {
+  sis_kontor_sorgula: {
+    session_id: string;
+  } & WsRequestGenerics;
 }
 
 export type WsLoginResponse = WsResponse;
 
 // i know, retarded. blame the api.
-export interface WsScfListResponse extends WsResponse {
+export interface WsAccountCardListResponse extends WsResponse {
   result: {
     carikartkodu: string;
     unvan: string;
     dovizturu: string;
     bakiye: string;
     ba: '(B)' | '(A)';
+  }[];
+}
+
+export interface WsStockCardListResponse extends WsResponse {
+  result: {
+    stokkartkodu: string;
+    aciklama: string;
+    birimadi: string;
   }[];
 }
 
@@ -42,5 +69,11 @@ export interface WsGetPeriodsResponse extends WsResponse {
       baslangic: string;
       bitis: string;
     }[];
+  };
+}
+
+export interface WsGetCreditCountResponse extends Omit<WsResponse, 'msg'> {
+  result: {
+    kontorsayisi: number;
   };
 }

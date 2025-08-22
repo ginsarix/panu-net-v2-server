@@ -3,8 +3,17 @@ import { FastifyRequest } from 'fastify';
 
 import { unauthorizedErrorMessage, unexpectedErrorMessage } from '../../constants/messages.ts';
 import myAxios from '../../services/api-base.ts';
-import { WsGetPeriodsResponse, WsLoginResponse } from '../../types/web-service.ts';
-import { constructGetPeriods, constructLogin, sourceWithSis } from '../../utils/web-service.ts';
+import {
+  WsGetCreditCountResponse,
+  WsGetPeriodsResponse,
+  WsLoginResponse,
+} from '../../types/web-service.ts';
+import {
+  constructGetCreditCount,
+  constructGetPeriods,
+  constructLogin,
+  sourceWithSis,
+} from '../../utils/web-service.ts';
 import { getCompanyById } from '../companiesDb.ts';
 
 export const login = async (request: FastifyRequest) => {
@@ -32,7 +41,7 @@ export const login = async (request: FastifyRequest) => {
   else console.error(response);
 };
 
-export const getPeriods = async (request: FastifyRequest, companyCode: number) => {
+export const getPeriods = async (request: FastifyRequest, companyCode: string) => {
   if (!request.session.wsSessionId) {
     throw new TRPCError({
       code: 'FORBIDDEN',
@@ -62,6 +71,39 @@ export const getPeriods = async (request: FastifyRequest, companyCode: number) =
     constructGetPeriods(request.session.wsSessionId, companyCode, {
       selectedcolumns: ['m_donemler'],
     }),
+  );
+
+  return response.data;
+};
+
+export const getWsCreditCount = async (request: FastifyRequest) => {
+  if (!request.session.wsSessionId) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: unauthorizedErrorMessage,
+    });
+  }
+
+  const selectedCompanyId = request.session.selectedCompanyId;
+
+  if (!selectedCompanyId) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Seçili şirket bulunmamaktadır.',
+    });
+  }
+
+  const [message, code, result] = await getCompanyById(selectedCompanyId);
+  if (!result) {
+    throw new TRPCError({
+      code: code || 'INTERNAL_SERVER_ERROR',
+      message: message || unexpectedErrorMessage,
+    });
+  }
+
+  const response = await myAxios.post<WsGetCreditCountResponse>(
+    sourceWithSis(result.webServiceSource),
+    constructGetCreditCount(request.session.wsSessionId),
   );
 
   return response.data;

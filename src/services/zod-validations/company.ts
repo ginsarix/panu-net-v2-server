@@ -4,7 +4,7 @@ import { nameRequiredMessage, requiredFieldMessage } from '../../constants/messa
 
 export const CreateCompanySchema = z.object({
   name: z.string().min(1, nameRequiredMessage),
-  code: z.number().int().positive(),
+  code: z.string(),
   manager: z.string().min(1, 'Yönetici isimi gereklidir.'),
   phone: z.string().nullable().optional(),
   licenseDate: z.preprocess(

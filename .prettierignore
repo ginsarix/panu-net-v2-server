@@ -1,1 +1,14 @@
 /dist
+/node_modules
+/build
+/out
+*.min.js
+*.bundle.js
+package-lock.json
+.git
+*.log
+*.png
+*.jpg
+*.svg
+*.woff
+*.ttf

@@ -12,11 +12,7 @@ export const getCompanyById = async (id: string | number): Promise<Result<Compan
   const companyId = typeof id === 'string' ? parseIntBase10(id) : id;
   if (isNaN(companyId)) return [idInvalidMessage, 'BAD_REQUEST', null];
 
-  const company = await db
-    .select()
-    .from(companies)
-    .where(eq(companies.id, companyId))
-    .then(rows => rows[0]);
+  const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
 
   if (!company) {
     return [companyNotFoundMessage, 'NOT_FOUND', null];

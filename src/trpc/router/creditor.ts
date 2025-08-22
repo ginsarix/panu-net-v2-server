@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { publicProcedure, router } from '../';
+import { protectedProcedure, router } from '../';
 import { scfEndpoint } from '../../constants/endpoints';
 import {
   badRequestMessage,
@@ -13,17 +13,17 @@ import {
 import myAxios from '../../services/api-base.ts';
 import { getCompanyById } from '../../services/companiesDb';
 import { login } from '../../services/web-service/sis';
-import { WsScfListResponse } from '../../types/web-service.ts';
+import { WsAccountCardListResponse } from '../../types/web-service.ts';
 import { parseIntBase10 } from '../../utils/parsing';
-import { sourceWithSlash } from '../../utils/web-service';
+import { constructGetAccountCards, sourceWithSlash } from '../../utils/web-service';
 
 const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;
 
 export const creditorRouter = router({
-  getCreditors: publicProcedure
+  getCreditors: protectedProcedure
     .input(
       z.object({
-        companyCode: z.number().int().positive(),
+        companyCode: z.string(),
       }),
     )
     .query(async ({ input, ctx }) => {
@@ -46,23 +46,17 @@ export const creditorRouter = router({
           });
         }
 
-        const creditorsParams = {
-          scf_carikart_listele: {
-            session_id: ctx.req.session.wsSessionId,
-            firma_kodu: input.companyCode,
-            donem_kodu: ctx.req.session.selectedPeriodCode ?? 0,
-            filters: [{ field: 'ba', operator: '=', value: '(A)' }],
-            params: {
+        const scfResponse = await myAxios.post<WsAccountCardListResponse>(
+          sourceWithScf(result.webServiceSource),
+          constructGetAccountCards(
+            ctx.req.session.wsSessionId!,
+            input.companyCode,
+            ctx.req.session.selectedPeriodCode,
+            {
               selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
             },
-          },
-        };
-
-        console.log(creditorsParams);
-
-        const scfResponse = await myAxios.post<WsScfListResponse>(
-          sourceWithScf(result.webServiceSource),
-          creditorsParams,
+            [{ field: 'ba', operator: '=', value: '(A)' }],
+          ),
         );
 
         const responseCode = parseIntBase10(scfResponse.data.code || '500');

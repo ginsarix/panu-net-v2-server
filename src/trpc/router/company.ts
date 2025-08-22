@@ -15,7 +15,7 @@ import { db } from '../../db';
 import { companies } from '../../db/schema/company.ts';
 import { usersToCompanies } from '../../db/schema/user-company.ts';
 import { getCompanyById } from '../../services/companiesDb.ts';
-import { getPeriods, login } from '../../services/web-service/sis.ts';
+import { getPeriods, getWsCreditCount, login } from '../../services/web-service/sis.ts';
 import {
   CreateCompanySchema,
   UpdateCompanySchema,
@@ -401,7 +401,7 @@ export const companyRouter = router({
   }),
 
   getPeriods: protectedProcedure
-    .input(z.object({ companyCode: z.number().int().positive() }))
+    .input(z.object({ companyCode: z.string() }))
     .query(async ({ input, ctx }) => {
       try {
         await login(ctx.req);
@@ -417,4 +417,20 @@ export const companyRouter = router({
         });
       }
     }),
+
+  getCreditCount: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      await login(ctx.req);
+      const response = await getWsCreditCount(ctx.req);
+
+      return response.result.kontorsayisi;
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      console.error('An error occurred while getting credit count: ', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Kontör sorgulanırken bir hata ile karşılaşıldı.',
+      });
+    }
+  }),
 });

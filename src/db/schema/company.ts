@@ -1,8 +1,8 @@
-import { boolean, integer, pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { boolean, pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 export const companies = pgTable('companies', {
   id: serial('id').primaryKey(),
-  code: integer('code').notNull(),
+  code: varchar('code', { length: 255 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   manager: varchar('manager', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 32 }),
