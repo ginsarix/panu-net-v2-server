@@ -2,8 +2,11 @@ import * as esbuild from 'esbuild';
 
 esbuild
   .build({
-    entryPoints: ['./src/index.ts'],
-    outfile: './dist/bundle.js',
+    entryPoints: [
+      './src/index.ts',
+      './src/services/queue-system/workers/subscription-expiry-email-worker.ts',
+    ],
+    outdir: 'dist',
     bundle: true,
     platform: 'node',
     target: 'esnext',

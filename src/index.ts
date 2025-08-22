@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import path, { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { queue } from './services/queue-system/queues.ts';
 import { setRedis } from './services/redis.ts';
 import { createContext } from './trpc/context.ts';
 import { type AppRouter, appRouter } from './trpc/router';
@@ -43,8 +44,10 @@ fastify.register(fastifyRedis, {
   port: 6379,
 });
 
-fastify.addHook('onReady', () => {
+fastify.addHook('onReady', async () => {
   setRedis(fastify.redis);
+  await queue.add('lorem', {}, { repeat: {} });
+  await queue.add('hi', {});
 });
 
 await fastify.register(fastifyCookie);
@@ -90,7 +93,10 @@ fastify.listen({ port: PORT }, (err, address) => {
     process.exit(1);
   }
   console.log(`API server is running on ${address}
-Swagger UI on ${address}/docs
 Metrics on ${address}/metrics
   `);
+});
+
+process.on('SIGTERM', () => {
+  process.exit(0);
 });

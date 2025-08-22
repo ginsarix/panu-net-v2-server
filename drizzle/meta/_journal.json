@@ -5,85 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1747220719328,
-      "tag": "0000_wealthy_energizer",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1749625423136,
-      "tag": "0001_worried_black_cat",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1749711480859,
-      "tag": "0002_salty_screwball",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1751033471008,
-      "tag": "0003_sharp_jean_grey",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1753080011527,
-      "tag": "0004_nifty_morlocks",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1753274870208,
-      "tag": "0005_classy_menace",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1753433140050,
-      "tag": "0006_puzzling_tyrannus",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1753709137649,
-      "tag": "0007_heavy_mojo",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1754650425560,
-      "tag": "0008_crazy_cargill",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1754651775160,
-      "tag": "0009_elite_amphibian",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1755160335030,
-      "tag": "0010_wet_vision",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1755160384471,
-      "tag": "0011_unique_slapstick",
+      "when": 1755871535995,
+      "tag": "0000_rapid_baron_strucker",
       "breakpoints": true
     }
   ]

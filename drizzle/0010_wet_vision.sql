@@ -1,1 +1,0 @@
-ALTER TABLE "companies" ALTER COLUMN "code" SET DATA TYPE varchar(255);
