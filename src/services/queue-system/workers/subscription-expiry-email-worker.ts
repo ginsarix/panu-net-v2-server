@@ -23,18 +23,11 @@ const worker = new Worker(
 
     let emailsSent = 0;
 
-    const promises = subscriptionCustomersResult.map(async (customer) => {
+    for (const customer of subscriptionCustomersResult) {
       const subscriptionExpiry = parseISO(customer.endDate);
       const daysLeft = differenceInCalendarDays(subscriptionExpiry, today);
 
-      const conditions = [
-        daysLeft <= 30 && daysLeft > 15,
-        daysLeft <= 15 && daysLeft > 7,
-        daysLeft <= 7 && daysLeft >= 0,
-        daysLeft < 0,
-      ];
-
-      if (!conditions.some(Boolean)) return Promise.resolve();
+      if (daysLeft > 30) continue;
 
       const subject =
         daysLeft >= 0
@@ -42,14 +35,12 @@ const worker = new Worker(
           : `Subscription expired ${Math.abs(daysLeft)} days ago`;
 
       try {
-        return await sendEmail({ to: customer.email, subject });
+        await sendEmail({ to: customer.email, subject });
         emailsSent++;
       } catch (err) {
         console.error(`Failed to send email to ${customer.email}`, err);
       }
-    });
-
-    await Promise.all(promises);
+    }
 
     return { emailsSent };
   },
