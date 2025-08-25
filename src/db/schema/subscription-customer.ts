@@ -15,5 +15,5 @@ export const subscriptionCustomers = pgTable('subscription_customers', {
 });
 
 export const subscriptionCustomersRelation = relations(subscriptionCustomers, ({ many }) => ({
-  posts: many(subscriptions),
+  subscriptions: many(subscriptions),
 }));

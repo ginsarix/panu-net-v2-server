@@ -13,7 +13,7 @@ import {
 import myAxios from '../../services/api-base.ts';
 import { getCompanyById } from '../../services/companiesDb.ts';
 import { login } from '../../services/web-service/sis.ts';
-import { WsAccountCardListResponse } from '../../types/web-service.ts';
+import type { WsAccountCardListResponse } from '../../types/web-service.ts';
 import { parseIntBase10 } from '../../utils/parsing.ts';
 import { constructGetAccountCards, sourceWithSlash } from '../../utils/web-service.ts';
 

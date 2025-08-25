@@ -15,7 +15,7 @@ import { db } from '../../db';
 import { users } from '../../db/schema/user';
 import { usersToCompanies } from '../../db/schema/user-company.ts';
 import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.ts';
-import { User } from '../../types/user.ts';
+import type { User } from '../../types/user.ts';
 
 const stripSensitive = (user: User) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

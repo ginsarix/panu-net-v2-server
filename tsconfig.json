@@ -4,6 +4,7 @@
     "module": "ESNext",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "verbatimModuleSyntax": true,
     "moduleResolution": "Node",
     "outDir": "./dist",
     "rootDir": "./",

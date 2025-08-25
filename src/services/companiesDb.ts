@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { companyNotFoundMessage, idInvalidMessage } from '../constants/messages.ts';
 import { db } from '../db';
 import { companies } from '../db/schema/company.ts';
-import { Result } from '../types/result.ts';
+import type { Result } from '../types/result.ts';
 import { parseIntBase10 } from '../utils/parsing.ts';
 
 type CompanyType = typeof companies.$inferSelect;

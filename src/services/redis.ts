@@ -1,4 +1,4 @@
-import { FastifyRedis } from '@fastify/redis';
+import { type FastifyRedis } from '@fastify/redis';
 
 let redisInstance: FastifyRedis | null = null;
 

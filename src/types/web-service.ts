@@ -54,14 +54,6 @@ export interface WsAccountCardListResponse extends WsResponse {
   }[];
 }
 
-export interface WsStockCardListResponse extends WsResponse {
-  result: {
-    stokkartkodu: string;
-    aciklama: string;
-    birimadi: string;
-  }[];
-}
-
 export interface WsGetPeriodsResponse extends WsResponse {
   result: {
     m_donemler: {

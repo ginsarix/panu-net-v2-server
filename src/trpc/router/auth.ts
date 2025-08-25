@@ -15,7 +15,7 @@ import { OTP_TTL } from '../../constants/redis';
 import { db } from '../../db';
 import { users } from '../../db/schema/user';
 import { getRedis } from '../../services/redis';
-import { Redis2FAContext } from '../../types/redis-2fa-context';
+import type { Redis2FAContext } from '../../types/redis-2fa-context';
 import { sendEmail } from '../../utils/send-email';
 
 const generateOtp = customAlphabet('0123456789', 6);

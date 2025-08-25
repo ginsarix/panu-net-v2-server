@@ -1,9 +1,9 @@
 import { TRPCError } from '@trpc/server';
-import { FastifyRequest } from 'fastify';
+import { type FastifyRequest } from 'fastify';
 
 import { unauthorizedErrorMessage, unexpectedErrorMessage } from '../../constants/messages.ts';
 import myAxios from '../../services/api-base.ts';
-import {
+import type {
   WsGetCreditCountResponse,
   WsGetPeriodsResponse,
   WsLoginResponse,

@@ -1,16 +1,22 @@
 import { relations } from 'drizzle-orm';
-import { date, integer, pgEnum, pgTable, serial } from 'drizzle-orm/pg-core';
+import { date, integer, pgEnum, pgTable, serial, timestamp } from 'drizzle-orm/pg-core';
 
 import { subscriptionCustomers } from './subscription-customer';
 
-const subscriptionType = pgEnum('type', ['domain', 'ssl', 'hosting', 'mail']);
+export const subscriptionTypeEnum = pgEnum('subscription_type', [
+  'domain',
+  'ssl',
+  'hosting',
+  'mail',
+]);
 
 export const subscriptions = pgTable('subscriptions', {
   id: serial('id').primaryKey(),
   startDate: date('start_date').notNull(),
   endDate: date('end_date').notNull(),
-  type: subscriptionType(),
+  subscriptionType: subscriptionTypeEnum().notNull(),
   userId: integer('user_id').notNull(),
+  creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({

@@ -3,7 +3,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyRedis from '@fastify/redis';
 import fastifySession from '@fastify/session';
-import { FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
+import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import * as dotenv from 'dotenv';
 import Fastify from 'fastify';
 import metrics from 'fastify-metrics';
@@ -46,8 +46,7 @@ fastify.register(fastifyRedis, {
 
 fastify.addHook('onReady', async () => {
   setRedis(fastify.redis);
-  await queue.add('lorem', {}, { repeat: {} });
-  await queue.add('hi', {});
+  await queue.add('sendSubscriptionExpiryEmails', {});
 });
 
 await fastify.register(fastifyCookie);

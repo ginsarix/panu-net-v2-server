@@ -1,5 +1,5 @@
 import { sisEndpoint } from '../constants/endpoints.ts';
-import {
+import type {
   WsFilters,
   WsGetCreditCountRequest,
   WsGetPeriodsRequest,

@@ -3,7 +3,7 @@ import { authRouter } from './auth.ts';
 import { companyRouter } from './company.ts';
 import { creditorRouter } from './creditor.ts';
 import { debtorRouter } from './debtor.ts';
-import { stockRouter } from './stock.ts';
+import { subscriptionRouter } from './subscription.ts';
 import { userRouter } from './user.ts';
 
 export const appRouter = router({
@@ -12,7 +12,7 @@ export const appRouter = router({
   company: companyRouter,
   debtor: debtorRouter,
   creditor: creditorRouter,
-  stock: stockRouter,
+  subscription: subscriptionRouter,
 });
 
 export type AppRouter = typeof appRouter;

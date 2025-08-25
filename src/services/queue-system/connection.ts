@@ -1,4 +1,4 @@
-import { ConnectionOptions } from 'bullmq';
+import { type ConnectionOptions } from 'bullmq';
 import Redis from 'ioredis';
 
 let redis: Redis | null = null;

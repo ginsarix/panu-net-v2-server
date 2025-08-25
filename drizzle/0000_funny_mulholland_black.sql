@@ -1,3 +1,4 @@
+CREATE TYPE "public"."subscription_type" AS ENUM('domain', 'ssl', 'hosting', 'mail');--> statement-breakpoint
 CREATE TABLE "companies" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"code" varchar(255) NOT NULL,
@@ -30,8 +31,9 @@ CREATE TABLE "subscriptions" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"start_date" date NOT NULL,
 	"end_date" date NOT NULL,
-	"type" "type",
-	"user_id" integer NOT NULL
+	"subscriptionType" "subscription_type",
+	"user_id" integer NOT NULL,
+	"creation_date" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "users_to_companies" (
