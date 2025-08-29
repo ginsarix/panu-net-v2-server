@@ -1,21 +1,21 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { protectedProcedure, router } from '../';
-import { scfEndpoint } from '../../constants/endpoints.ts';
+import { scfEndpoint } from '../../constants/endpoints.js';
 import {
   badRequestMessage,
   notFoundMessage,
   selectedCompanyNotFoundMessage,
   serverErrorMessage,
   unexpectedErrorMessage,
-} from '../../constants/messages.ts';
-import myAxios from '../../services/api-base.ts';
-import { getCompanyById } from '../../services/companiesDb.ts';
-import { login } from '../../services/web-service/sis.ts';
-import type { WsAccountCardListResponse } from '../../types/web-service.ts';
-import { parseIntBase10 } from '../../utils/parsing.ts';
-import { constructGetAccountCards, sourceWithSlash } from '../../utils/web-service.ts';
+} from '../../constants/messages.js';
+import myAxios from '../../services/api-base.js';
+import { getCompanyById } from '../../services/companiesDb.js';
+import { login } from '../../services/web-service/sis.js';
+import type { WsAccountCardListResponse } from '../../types/web-service';
+import { parseIntBase10 } from '../../utils/parsing.js';
+import { constructGetAccountCards, sourceWithSlash } from '../../utils/web-service.js';
+import { protectedProcedure, router } from '../index.js';
 
 const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;
 

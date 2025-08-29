@@ -5,18 +5,18 @@ import { customAlphabet } from 'nanoid';
 import { v4 as uuid } from 'uuid';
 import z from 'zod';
 
-import { protectedProcedure, publicProcedure, router } from '..';
 import {
   emailInvalidMessage,
   passwordAtleast8CharactersMessage,
   serverErrorMessage,
-} from '../../constants/messages';
-import { OTP_TTL } from '../../constants/redis';
-import { db } from '../../db';
-import { users } from '../../db/schema/user';
-import { getRedis } from '../../services/redis';
+} from '../../constants/messages.js';
+import { OTP_TTL } from '../../constants/redis.js';
+import { db } from '../../db/index.js';
+import { users } from '../../db/schema/user.js';
+import { getRedis } from '../../services/redis.js';
 import type { Redis2FAContext } from '../../types/redis-2fa-context';
-import { sendEmail } from '../../utils/send-email';
+import { sendEmail } from '../../utils/send-email.js';
+import { protectedProcedure, publicProcedure, router } from '../index.js';
 
 const generateOtp = customAlphabet('0123456789', 6);
 

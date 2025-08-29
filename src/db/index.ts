@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
-import { schema } from './schema/schema.ts';
+import { schema } from './schema/schema.js';
 
 dotenv.config();
 

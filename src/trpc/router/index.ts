@@ -1,10 +1,11 @@
-import { router } from '../';
-import { authRouter } from './auth.ts';
-import { companyRouter } from './company.ts';
-import { creditorRouter } from './creditor.ts';
-import { debtorRouter } from './debtor.ts';
-import { subscriptionRouter } from './subscription.ts';
-import { userRouter } from './user.ts';
+import { router } from '../index.js';
+import { authRouter } from './auth.js';
+import { companyRouter } from './company.js';
+import { creditorRouter } from './creditor.js';
+import { debtorRouter } from './debtor.js';
+import { subscriptionCustomerRouter } from './subscription-customer.js';
+import { subscriptionRouter } from './subscription.js';
+import { userRouter } from './user.js';
 
 export const appRouter = router({
   user: userRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   debtor: debtorRouter,
   creditor: creditorRouter,
   subscription: subscriptionRouter,
+  subscriptionCustomer: subscriptionCustomerRouter,
 });
 
 export type AppRouter = typeof appRouter;

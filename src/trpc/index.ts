@@ -1,11 +1,11 @@
-import { type FastifySessionObject } from '@fastify/session';
+import type { FastifySessionObject } from '@fastify/session';
 import { TRPCError, initTRPC } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 
-import { unauthorizedErrorMessage } from '../constants/messages.ts';
-import { db } from '../db/index.ts';
-import { users } from '../db/schema/user.ts';
-import { type Context } from './context.ts';
+import { unauthorizedErrorMessage } from '../constants/messages.js';
+import { db } from '../db/index.js';
+import { users } from '../db/schema/user.js';
+import type { Context } from './context';
 
 const t = initTRPC.context<Context>().create();
 

@@ -1,21 +1,21 @@
 import { TRPCError } from '@trpc/server';
 import * as bcrypt from 'bcrypt';
-import { asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { asc, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { authorizedProcedure, router } from '../';
-import { saltRounds } from '../../constants/auth.ts';
+import { saltRounds } from '../../constants/auth.js';
 import {
   couldntFetchUsersMessage,
   emailAlreadyExistsMessage,
   userNotFoundMessage,
-} from '../../constants/messages.ts';
-import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.ts';
-import { db } from '../../db';
-import { users } from '../../db/schema/user';
-import { usersToCompanies } from '../../db/schema/user-company.ts';
-import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.ts';
-import type { User } from '../../types/user.ts';
+} from '../../constants/messages.js';
+import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
+import { db } from '../../db/index.js';
+import { usersToCompanies } from '../../db/schema/user-company.js';
+import { users } from '../../db/schema/user.js';
+import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.js';
+import type { User } from '../../types/user';
+import { authorizedProcedure, router } from '../index.js';
 
 const stripSensitive = (user: User) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -40,7 +40,7 @@ export const userRouter = router({
           )
           .default([])
           .transform((val) => (!val.length ? [{ key: 'creationDate', order: 'desc' }] : val)),
-        search: z.string().default(''),
+        search: z.string().max(256).default(''),
       }),
     )
     .query(async ({ input }) => {
@@ -68,20 +68,14 @@ export const userRouter = router({
             .orderBy(sortFn(sortColumn))
             .offset(skip)
             .limit(itemsPerPage),
-          db
-            .select({
-              total: sql<number>`COUNT
-                (*)`,
-            })
-            .from(users)
-            .where(whereClause ?? sql`TRUE`),
+          db.$count(users),
         ]);
 
         const result = fetchedUsers.map(stripSensitive);
 
         return {
           users: result,
-          total: totalCount[0].total,
+          total: totalCount,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
@@ -131,12 +125,20 @@ export const userRouter = router({
 
       input.password = await bcrypt.hash(input.password, saltRounds);
 
-      const [user] = await db.insert(users).values(input).returning({ id: users.id });
+      const [user] = await db
+        .insert(users)
+        .values(input)
+        .returning({ id: users.id, creationDate: users.creationDate });
 
       const relationValues = input.companies.map((c) => ({ userId: user.id, companyId: c }));
-      await db.insert(usersToCompanies).values(relationValues);
 
-      return { message: 'Kullanıcı başarıyla oluşturuldu.' };
+      if (relationValues.length) await db.insert(usersToCompanies).values(relationValues);
+
+      return {
+        message: 'Kullanıcı başarıyla oluşturuldu.',
+        id: user.id,
+        creationDate: user.creationDate,
+      };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
       console.error('Failed to create user: ', error);
@@ -173,16 +175,25 @@ export const userRouter = router({
           input.data.password = await bcrypt.hash(input.data.password, saltRounds);
         }
 
-        const result = await db.update(users).set(input.data).where(eq(users.id, input.id));
+        const result = await db
+          .update(users)
+          .set(input.data)
+          .where(eq(users.id, input.id))
+          .returning({ id: users.id, updatedOn: users.updatedOn });
 
-        if (!result.rowCount) {
+        if (!result.length) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: userNotFoundMessage,
           });
         }
 
-        return { message: 'Kullanıcı güncellendi.' };
+        const [serverValues] = result;
+
+        return {
+          message: 'Kullanıcı güncellendi.',
+          updatedOn: serverValues.updatedOn,
+        };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         console.error('Failed to update user: ', error);

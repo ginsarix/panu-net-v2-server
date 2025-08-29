@@ -1,20 +1,20 @@
 import { TRPCError } from '@trpc/server';
-import { type FastifyRequest } from 'fastify';
+import type { FastifyRequest } from 'fastify';
 
-import { unauthorizedErrorMessage, unexpectedErrorMessage } from '../../constants/messages.ts';
-import myAxios from '../../services/api-base.ts';
+import { unauthorizedErrorMessage, unexpectedErrorMessage } from '../../constants/messages.js';
+import myAxios from '../../services/api-base.js';
 import type {
   WsGetCreditCountResponse,
   WsGetPeriodsResponse,
   WsLoginResponse,
-} from '../../types/web-service.ts';
+} from '../../types/web-service';
 import {
   constructGetCreditCount,
   constructGetPeriods,
   constructLogin,
   sourceWithSis,
-} from '../../utils/web-service.ts';
-import { getCompanyById } from '../companiesDb.ts';
+} from '../../utils/web-service.js';
+import { getCompanyById } from '../companiesDb.js';
 
 export const login = async (request: FastifyRequest) => {
   if (!request.session.selectedCompanyId) {

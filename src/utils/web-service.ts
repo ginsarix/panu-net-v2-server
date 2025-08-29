@@ -1,4 +1,4 @@
-import { sisEndpoint } from '../constants/endpoints.ts';
+import { sisEndpoint } from '../constants/endpoints.js';
 import type {
   WsFilters,
   WsGetCreditCountRequest,

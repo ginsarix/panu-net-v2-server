@@ -2,12 +2,12 @@ import { Worker } from 'bullmq';
 import { addDays, differenceInCalendarDays, parseISO } from 'date-fns';
 import { eq, lte } from 'drizzle-orm';
 
-import { db } from '../../../db';
-import { subscriptions } from '../../../db/schema/subscription';
-import { subscriptionCustomers } from '../../../db/schema/subscription-customer';
-import { sendEmail } from '../../../utils/send-email';
-import { connection } from '../connection';
-import { queueName } from '../queues';
+import { db } from '../../../db/index.js';
+import { subscriptionCustomers } from '../../../db/schema/subscription-customer.js';
+import { subscriptions } from '../../../db/schema/subscription.js';
+import { sendEmail } from '../../../utils/send-email.js';
+import { connection } from '../connection.js';
+import { queueName } from '../queues.js';
 
 const worker = new Worker(
   queueName,
@@ -27,8 +27,6 @@ const worker = new Worker(
       const subscriptionExpiry = parseISO(customer.endDate);
       const daysLeft = differenceInCalendarDays(subscriptionExpiry, today);
 
-      if (daysLeft > 30) continue;
-
       const subject =
         daysLeft >= 0
           ? `Subscription will expire in ${daysLeft} days`
@@ -42,7 +40,7 @@ const worker = new Worker(
       }
     }
 
-    return { emailsSent };
+    return emailsSent;
   },
   { connection },
 );

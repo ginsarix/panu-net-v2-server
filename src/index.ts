@@ -12,12 +12,16 @@ import { readFileSync } from 'node:fs';
 import path, { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { queue } from './services/queue-system/queues.ts';
-import { setRedis } from './services/redis.ts';
-import { createContext } from './trpc/context.ts';
-import { type AppRouter, appRouter } from './trpc/router';
+import { queue } from './services/queue-system/queues.js';
+import { setRedis } from './services/redis.js';
+import { createContext } from './trpc/context.js';
+import { type AppRouter, appRouter } from './trpc/router/index.js';
 
-dotenv.config();
+const env = process.env.NODE_ENV || 'development';
+
+if (env === 'development') {
+  dotenv.config({ path: `.env.development` });
+}
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -46,7 +50,15 @@ fastify.register(fastifyRedis, {
 
 fastify.addHook('onReady', async () => {
   setRedis(fastify.redis);
-  await queue.add('sendSubscriptionExpiryEmails', {});
+  await queue.add(
+    'sendSubscriptionExpiryEmails',
+    {},
+    {
+      repeat: {
+        every: 24 * 60 * 60 * 1000, // 24 hours in ms
+      },
+    },
+  );
 });
 
 await fastify.register(fastifyCookie);

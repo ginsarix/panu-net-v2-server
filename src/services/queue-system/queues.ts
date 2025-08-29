@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 
-import { connection } from './connection';
+import { connection } from './connection.js';
 
 export const queueName = 'subscriptionExpiryEmails';
 

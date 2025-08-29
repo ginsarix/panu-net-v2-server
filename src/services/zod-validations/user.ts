@@ -7,7 +7,7 @@ import {
   phoneInvalidMessage,
   roleInvalidMessage,
   updateAtleast1FieldMessage,
-} from '../../constants/messages.ts';
+} from '../../constants/messages.js';
 
 export const CreateUserSchema = z.object({
   name: z.string().min(1, nameRequiredMessage),

@@ -1,0 +1,1 @@
+ALTER TABLE "subscription_customers" ADD COLUMN "creation_date" timestamp with time zone DEFAULT now() NOT NULL;

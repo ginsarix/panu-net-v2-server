@@ -2,24 +2,24 @@ import { TRPCError } from '@trpc/server';
 import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { authorizedProcedure, protectedProcedure, router } from '../';
 import {
   companyNotFoundMessage,
   couldntFetchCompaniesMessage,
   noCompanyAccessMessage,
   unauthorizedErrorMessage,
   unexpectedErrorMessage,
-} from '../../constants/messages.ts';
-import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.ts';
-import { db } from '../../db';
-import { companies } from '../../db/schema/company.ts';
-import { usersToCompanies } from '../../db/schema/user-company.ts';
-import { getCompanyById } from '../../services/companiesDb.ts';
-import { getPeriods, getWsCreditCount, login } from '../../services/web-service/sis.ts';
+} from '../../constants/messages.js';
+import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
+import { db } from '../../db/index.js';
+import { companies } from '../../db/schema/company.js';
+import { usersToCompanies } from '../../db/schema/user-company.js';
+import { getCompanyById } from '../../services/companiesDb.js';
+import { getPeriods, getWsCreditCount, login } from '../../services/web-service/sis.js';
 import {
   CreateCompanySchema,
   UpdateCompanySchema,
-} from '../../services/zod-validations/company.ts';
+} from '../../services/zod-validations/company.js';
+import { authorizedProcedure, protectedProcedure, router } from '../index.js';
 
 export const companyRouter = router({
   getCompanies: protectedProcedure
@@ -38,7 +38,7 @@ export const companyRouter = router({
           )
           .default([])
           .transform((val) => (!val.length ? [{ key: 'creationDate', order: 'desc' }] : val)),
-        search: z.string().default(''),
+        search: z.string().max(256).default(''),
       }),
     )
     .query(async ({ input, ctx }) => {
@@ -59,7 +59,14 @@ export const companyRouter = router({
 
         const sortColumn = sortableColumns[sortBy[0].key as keyof typeof sortableColumns];
         const sortFn = sortBy[0].order === 'asc' ? asc : desc;
-        const whereClause = search ? ilike(companies.name, `%${search}%`) : undefined;
+        const searchFilter = search ? ilike(companies.name, `%${search}%`) : undefined;
+        const currentUserFilter = eq(usersToCompanies.userId, userId);
+
+        const whereClause = !isAdmin
+          ? searchFilter
+            ? and(searchFilter, currentUserFilter)
+            : currentUserFilter
+          : searchFilter;
 
         if (isAdmin) {
           const query = db
@@ -67,50 +74,38 @@ export const companyRouter = router({
             .from(companies)
             .where(whereClause ?? sql`TRUE`);
 
-          const totalCountQuery = db
-            .select({ total: sql<number>`count(*)` })
-            .from(companies)
-            .where(whereClause ?? sql`TRUE`);
-
-          const [fetchedCompanies, totalCountResult] = await Promise.all([
+          const [fetchedCompanies, totalCount] = await Promise.all([
             query.orderBy(sortFn(sortColumn)).offset(skip).limit(itemsPerPage),
-            totalCountQuery,
+            db.$count(companies),
           ]);
-
-          const total = totalCountResult[0]?.total ?? 0;
 
           return {
             companies: fetchedCompanies,
-            total,
+            total: totalCount,
           };
         } else {
-          const conditions = [eq(usersToCompanies.userId, userId)];
-          if (whereClause) {
-            conditions.push(whereClause);
-          }
-
           const query = db
-            .select()
+            .select({ companies })
             .from(companies)
             .innerJoin(usersToCompanies, eq(companies.id, usersToCompanies.companyId))
-            .where(and(...conditions));
+            .where(whereClause);
 
-          const totalCountQuery = db
-            .select({ total: sql<number>`count(*)` })
-            .from(companies)
-            .innerJoin(usersToCompanies, eq(companies.id, usersToCompanies.companyId))
-            .where(and(...conditions));
+          const totalCountQuery = db.$count(
+            db
+              .select({ companies })
+              .from(companies)
+              .innerJoin(usersToCompanies, eq(companies.id, usersToCompanies.companyId)),
+            !isAdmin ? currentUserFilter : undefined,
+          );
 
-          const [fetchedCompanies, totalCountResult] = await Promise.all([
+          const [fetchedCompanies, totalCount] = await Promise.all([
             query.orderBy(sortFn(sortColumn)).offset(skip).limit(itemsPerPage),
             totalCountQuery,
           ]);
 
-          const total = totalCountResult[0]?.total ?? 0;
-
           return {
             companies: fetchedCompanies.map((c) => c.companies),
-            total,
+            total: totalCount,
           };
         }
       } catch (error) {
