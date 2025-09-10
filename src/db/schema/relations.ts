@@ -1,6 +1,8 @@
 import { relations } from 'drizzle-orm';
 
 import { companies } from './company.js';
+import { subscriptionCustomers } from './subscription-customer.js';
+import { subscriptions } from './subscription.js';
 import { usersToCompanies } from './user-company.js';
 import { users } from './user.js';
 
@@ -21,4 +23,8 @@ export const usersToCompaniesRelations = relations(usersToCompanies, ({ one }) =
     fields: [usersToCompanies.companyId],
     references: [companies.id],
   }),
+}));
+
+export const subscriptionCustomersRelation = relations(subscriptionCustomers, ({ many }) => ({
+  subscriptions: many(subscriptions),
 }));

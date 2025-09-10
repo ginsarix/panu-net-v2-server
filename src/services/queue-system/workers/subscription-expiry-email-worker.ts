@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
 import { addDays, differenceInCalendarDays, parseISO } from 'date-fns';
-import { eq, lte } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 
 import { db } from '../../../db/index.js';
 import { subscriptionCustomers } from '../../../db/schema/subscription-customer.js';
@@ -15,11 +15,15 @@ const worker = new Worker(
     console.log(`Processing job: "Name: ${job.name} | Id: ${job.id}"`);
 
     const today = new Date();
+
+    const dbEndDateEqCheck = (days: number) =>
+      eq(subscriptions.endDate, addDays(today, days).toISOString().split('T')[0]);
+
     const subscriptionCustomersResult = await db
       .select({ email: subscriptionCustomers.email, endDate: subscriptions.endDate })
       .from(subscriptionCustomers)
       .innerJoin(subscriptions, eq(subscriptionCustomers.id, subscriptions.userId))
-      .where(lte(subscriptions.endDate, addDays(today, 30).toISOString().split('T')[0]));
+      .where(or(dbEndDateEqCheck(30), dbEndDateEqCheck(15), dbEndDateEqCheck(7)));
 
     let emailsSent = 0;
 
@@ -27,10 +31,7 @@ const worker = new Worker(
       const subscriptionExpiry = parseISO(customer.endDate);
       const daysLeft = differenceInCalendarDays(subscriptionExpiry, today);
 
-      const subject =
-        daysLeft >= 0
-          ? `Subscription will expire in ${daysLeft} days`
-          : `Subscription expired ${Math.abs(daysLeft)} days ago`;
+      const subject = `Aboneliğinizi yenilemediğiniz takdirde ${daysLeft} gün sonra sona erecektir.`;
 
       try {
         await sendEmail({ to: customer.email, subject });

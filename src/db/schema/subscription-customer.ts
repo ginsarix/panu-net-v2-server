@@ -1,7 +1,4 @@
-import { relations } from 'drizzle-orm';
 import { boolean, integer, pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core';
-
-import { subscriptions } from './subscription.js';
 
 export const subscriptionCustomers = pgTable('subscription_customers', {
   id: serial('id').primaryKey(),
@@ -14,7 +11,3 @@ export const subscriptionCustomers = pgTable('subscription_customers', {
   manager: varchar('manager', { length: 255 }),
   creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
 });
-
-export const subscriptionCustomersRelation = relations(subscriptionCustomers, ({ many }) => ({
-  subscriptions: many(subscriptions),
-}));
