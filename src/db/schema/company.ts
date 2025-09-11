@@ -13,6 +13,6 @@ export const companies = pgTable('companies', {
   serverName: varchar('server_name', { length: 255 }).notNull(),
   apiKey: varchar('api_key', { length: 255 }).notNull(),
   apiSecret: varchar('api_secret', { length: 255 }).notNull(),
-  creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
-  updatedOn: timestamp('updated_on', { withTimezone: true }).notNull().defaultNow(),
+  creationDate: timestamp('creation_date', { withTimezone: true }).defaultNow().notNull(),
+  updatedOn: timestamp('updated_on', { withTimezone: true }).$onUpdate(() => new Date()),
 });

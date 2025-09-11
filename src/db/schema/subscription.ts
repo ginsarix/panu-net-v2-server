@@ -18,4 +18,5 @@ export const subscriptions = pgTable('subscriptions', {
     .references(() => subscriptionCustomers.id, { onDelete: 'cascade' })
     .notNull(),
   creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
+  updatedOn: timestamp('updated_on', { withTimezone: true }).$onUpdate(() => new Date()),
 });

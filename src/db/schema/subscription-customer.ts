@@ -9,5 +9,6 @@ export const subscriptionCustomers = pgTable('subscription_customers', {
   address: varchar('address', { length: 255 }),
   status: boolean('status').notNull(),
   manager: varchar('manager', { length: 255 }),
-  creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
+  creationDate: timestamp('creation_date', { withTimezone: true }).defaultNow().notNull(),
+  updatedOn: timestamp('updated_on', { withTimezone: true }).$onUpdate(() => new Date()),
 });
