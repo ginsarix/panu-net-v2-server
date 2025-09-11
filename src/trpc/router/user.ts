@@ -3,19 +3,19 @@ import * as bcrypt from 'bcrypt';
 import { asc, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { saltRounds } from '../../constants/auth.js';
+import { saltRounds } from '../../constants/auth';
 import {
   couldntFetchUsersMessage,
   emailAlreadyExistsMessage,
   userNotFoundMessage,
-} from '../../constants/messages.js';
-import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
-import { db } from '../../db/index.js';
-import { usersToCompanies } from '../../db/schema/user-company.js';
-import { users } from '../../db/schema/user.js';
-import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.js';
+} from '../../constants/messages';
+import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination';
+import { db } from '../../db/index';
+import { users } from '../../db/schema/user';
+import { usersToCompanies } from '../../db/schema/user-company';
+import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user';
 import type { User } from '../../types/user';
-import { authorizedProcedure, router } from '../index.js';
+import { authorizedProcedure, router } from '../index';
 
 const stripSensitive = (user: User) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

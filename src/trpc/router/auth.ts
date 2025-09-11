@@ -6,20 +6,20 @@ import { customAlphabet } from 'nanoid';
 import { v4 as uuid } from 'uuid';
 import z from 'zod';
 
-import { saltRounds } from '../../constants/auth.js';
+import { saltRounds } from '../../constants/auth';
 import {
   emailInvalidMessage,
   passwordAtleast8CharactersMessage,
   serverErrorMessage,
-} from '../../constants/messages.js';
-import { OTP_TTL } from '../../constants/redis.js';
-import { db } from '../../db/index.js';
-import { users } from '../../db/schema/user.js';
-import { getRedis } from '../../services/redis.js';
+} from '../../constants/messages';
+import { OTP_TTL } from '../../constants/redis';
+import { db } from '../../db/index';
+import { users } from '../../db/schema/user';
+import { getRedis } from '../../services/redis';
 import type { Redis2FAContext } from '../../types/redis-2fa-context';
-import type { RedisResetPasswordContext } from '../../types/redis-reset-password-context.js';
-import { sendEmail } from '../../utils/send-email.js';
-import { protectedProcedure, publicProcedure, router } from '../index.js';
+import type { RedisResetPasswordContext } from '../../types/redis-reset-password-context';
+import { sendEmail } from '../../utils/send-email';
+import { protectedProcedure, publicProcedure, router } from '../index';
 
 const generateOtp = customAlphabet('0123456789', 6);
 

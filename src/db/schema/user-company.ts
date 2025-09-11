@@ -1,7 +1,7 @@
 import { integer, pgTable, primaryKey, timestamp } from 'drizzle-orm/pg-core';
 
-import { companies } from './company.js';
-import { users } from './user.js';
+import { companies } from './company';
+import { users } from './user';
 
 export const usersToCompanies = pgTable(
   'users_to_companies',

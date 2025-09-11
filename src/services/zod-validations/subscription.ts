@@ -1,6 +1,6 @@
 import z from 'zod/v4';
 
-import { updateAtleast1FieldMessage } from '../../constants/messages.js';
+import { updateAtleast1FieldMessage } from '../../constants/messages';
 
 export const CreateSubscriptionSchema = z.object({
   startDate: z.iso.date(),

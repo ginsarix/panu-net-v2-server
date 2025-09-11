@@ -2,12 +2,12 @@ import { TRPCError } from '@trpc/server';
 import { and, asc, desc, eq, ilike } from 'drizzle-orm';
 import z from 'zod';
 
-import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
-import { db } from '../../db/index.js';
-import { subscriptionCustomers } from '../../db/schema/subscription-customer.js';
-import { subscriptions } from '../../db/schema/subscription.js';
-import { CreateSubscriptionSchema } from '../../services/zod-validations/subscription.js';
-import { authorizedProcedure, protectedProcedure, router } from '../index.js';
+import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination';
+import { db } from '../../db/index';
+import { subscriptions } from '../../db/schema/subscription';
+import { subscriptionCustomers } from '../../db/schema/subscription-customer';
+import { CreateSubscriptionSchema } from '../../services/zod-validations/subscription';
+import { authorizedProcedure, protectedProcedure, router } from '../index';
 
 export const subscriptionRouter = router({
   getSubscriptions: protectedProcedure

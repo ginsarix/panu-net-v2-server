@@ -1,21 +1,21 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { scfEndpoint } from '../../constants/endpoints.js';
+import { scfEndpoint } from '../../constants/endpoints';
 import {
   badRequestMessage,
   notFoundMessage,
   selectedCompanyNotFoundMessage,
   serverErrorMessage,
   unexpectedErrorMessage,
-} from '../../constants/messages.js';
-import myAxios from '../../services/api-base.js';
-import { getCompanyById } from '../../services/companiesDb.js';
-import { login } from '../../services/web-service/sis.js';
+} from '../../constants/messages';
+import myAxios from '../../services/api-base';
+import { getCompanyById } from '../../services/companiesDb';
+import { login } from '../../services/web-service/sis';
 import type { WsAccountCardListResponse } from '../../types/web-service';
-import { parseIntBase10 } from '../../utils/parsing.js';
-import { constructGetAccountCards, sourceWithSlash } from '../../utils/web-service.js';
-import { protectedProcedure, router } from '../index.js';
+import { parseIntBase10 } from '../../utils/parsing';
+import { constructGetAccountCards, sourceWithSlash } from '../../utils/web-service';
+import { protectedProcedure, router } from '../index';
 
 const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;
 

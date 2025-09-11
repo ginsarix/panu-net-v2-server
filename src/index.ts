@@ -12,10 +12,10 @@ import { readFileSync } from 'node:fs';
 import path, { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { queue } from './services/queue-system/queues.js';
-import { setRedis } from './services/redis.js';
-import { createContext } from './trpc/context.js';
-import { type AppRouter, appRouter } from './trpc/router/index.js';
+import { queue } from './services/queue-system/queues';
+import { setRedis } from './services/redis';
+import { createContext } from './trpc/context';
+import { type AppRouter, appRouter } from './trpc/router/index';
 
 const env = process.env.NODE_ENV || 'development';
 

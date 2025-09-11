@@ -1,8 +1,8 @@
 import { TRPCError } from '@trpc/server';
 import type { FastifyRequest } from 'fastify';
 
-import { unauthorizedErrorMessage, unexpectedErrorMessage } from '../../constants/messages.js';
-import myAxios from '../../services/api-base.js';
+import { unauthorizedErrorMessage, unexpectedErrorMessage } from '../../constants/messages';
+import myAxios from '../../services/api-base';
 import type {
   WsGetCreditCountResponse,
   WsGetPeriodsResponse,
@@ -13,8 +13,8 @@ import {
   constructGetPeriods,
   constructLogin,
   sourceWithSis,
-} from '../../utils/web-service.js';
-import { getCompanyById } from '../companiesDb.js';
+} from '../../utils/web-service';
+import { getCompanyById } from '../companiesDb';
 
 export const login = async (request: FastifyRequest) => {
   if (!request.session.selectedCompanyId) {

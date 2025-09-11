@@ -2,12 +2,12 @@ import { TRPCError } from '@trpc/server';
 import { asc, desc, eq, ilike } from 'drizzle-orm';
 import z from 'zod';
 
-import { emailAlreadyExistsMessage } from '../../constants/messages.js';
-import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
-import { db } from '../../db/index.js';
-import { subscriptionCustomers } from '../../db/schema/subscription-customer.js';
-import { CreateSubscriptionCustomerSchema } from '../../services/zod-validations/subscription-customer.js';
-import { authorizedProcedure, router } from '../index.js';
+import { emailAlreadyExistsMessage } from '../../constants/messages';
+import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination';
+import { db } from '../../db/index';
+import { subscriptionCustomers } from '../../db/schema/subscription-customer';
+import { CreateSubscriptionCustomerSchema } from '../../services/zod-validations/subscription-customer';
+import { authorizedProcedure, router } from '../index';
 
 export const subscriptionCustomerRouter = router({
   getSubscriptionCustomers: authorizedProcedure

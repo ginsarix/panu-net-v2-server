@@ -1,10 +1,10 @@
-import { sisEndpoint } from '../constants/endpoints.js';
+import { sisEndpoint } from '../constants/endpoints';
 import type {
   WsFilters,
   WsGetCreditCountRequest,
   WsGetPeriodsRequest,
   WsLoginRequest,
-} from '../types/web-service.ts';
+} from '../types/web-service';
 
 export const constructLogin = (
   username: string,

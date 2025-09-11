@@ -1,5 +1,4 @@
 import * as eslint from '@eslint/js';
-import pluginImport from 'eslint-plugin-import';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -10,20 +9,9 @@ export default tseslint.config(
   },
   {
     files: ['**/*.ts', '**/*.tsx'],
-    plugins: {
-      import: pluginImport,
-    },
     rules: {
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/prefer-promise-reject-errors': 'off',
-      'import/extensions': [
-        'error',
-        'always',
-        {
-          js: 'always',
-          ignorePackages: true,
-        },
-      ],
     },
     languageOptions: {
       parserOptions: {
@@ -33,7 +21,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
+    files: ['**/*.ts', '**/*.cts', '**/*.mts'],
     languageOptions: {
       parserOptions: {
         project: undefined,
