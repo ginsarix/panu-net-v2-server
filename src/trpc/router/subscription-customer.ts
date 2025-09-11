@@ -6,7 +6,10 @@ import { emailAlreadyExistsMessage } from '../../constants/messages';
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination';
 import { db } from '../../db/index';
 import { subscriptionCustomers } from '../../db/schema/subscription-customer';
-import { CreateSubscriptionCustomerSchema } from '../../services/zod-validations/subscription-customer';
+import {
+  CreateSubscriptionCustomerSchema,
+  UpdateSubscriptionCustomerSchema,
+} from '../../services/zod-validations/subscription-customer';
 import { authorizedProcedure, router } from '../index';
 
 export const subscriptionCustomerRouter = router({
@@ -111,6 +114,63 @@ export const subscriptionCustomerRouter = router({
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Müşteri oluşturulurken bir hata ile karşılaşıldı.',
+        });
+      }
+    }),
+  updateSubscriptionCustomer: authorizedProcedure
+    .input(z.object({ id: z.number().int().positive(), data: UpdateSubscriptionCustomerSchema }))
+    .mutation(async ({ input }) => {
+      try {
+        const updatedSubscriptionCustomer = await db
+          .update(subscriptionCustomers)
+          .set(input.data)
+          .where(eq(subscriptionCustomers.id, input.id))
+          .returning();
+
+        if (!updatedSubscriptionCustomer.length) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Müşteri bulunamadı.',
+          });
+        }
+
+        return {
+          updatedOn: updatedSubscriptionCustomer[0].updatedOn,
+          message: 'Müşteri başarıyla düzenlendi.',
+        };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+
+        console.error('An error occurred while updating subscription customer: ', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Müşteri düzenlenilirken bir hata ile karşılaşıldı.',
+        });
+      }
+    }),
+  deleteSubscriptionCustomer: authorizedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      try {
+        const result = await db
+          .delete(subscriptionCustomers)
+          .where(eq(subscriptionCustomers.id, input.id));
+
+        if (!result.rowCount) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Müşteri bulunamadı.',
+          });
+        }
+
+        return { message: 'Müşteri başarıyla silindi.' };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+
+        console.error('An error occurred while deleting subscription customer: ', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Müşteri silinirken bir hata ile karşılaşıldı.',
         });
       }
     }),

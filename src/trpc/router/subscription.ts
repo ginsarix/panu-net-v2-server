@@ -6,7 +6,10 @@ import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination';
 import { db } from '../../db/index';
 import { subscriptions } from '../../db/schema/subscription';
 import { subscriptionCustomers } from '../../db/schema/subscription-customer';
-import { CreateSubscriptionSchema } from '../../services/zod-validations/subscription';
+import {
+  CreateSubscriptionSchema,
+  UpdateSubscriptionSchema,
+} from '../../services/zod-validations/subscription';
 import { authorizedProcedure, protectedProcedure, router } from '../index';
 
 export const subscriptionRouter = router({
@@ -85,6 +88,7 @@ export const subscriptionRouter = router({
         });
       }
     }),
+
   createSubscription: authorizedProcedure
     .input(CreateSubscriptionSchema)
     .mutation(async ({ input }) => {
@@ -102,10 +106,71 @@ export const subscriptionRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('Failed to create subscription', error);
+        console.error('Failed to create subscription: ', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Abonelik oluşturulurken bir hata ile karşılaşıldı.',
+        });
+      }
+    }),
+
+  updateSubscription: authorizedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        data: UpdateSubscriptionSchema,
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const updatedSubscription = await db
+          .update(subscriptions)
+          .set(input.data)
+          .where(eq(subscriptions.id, input.id))
+          .returning();
+
+        if (!updatedSubscription.length) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Abonelik bulunamadı.',
+          });
+        }
+
+        return {
+          updatedOn: updatedSubscription[0].updatedOn!,
+          message: 'Abonelik başarıyla düzenlendi.',
+        };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+
+        console.error('Failed to update subscription: ', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Abonelik düzenlenirken bir hata ile karşılaşıldı.',
+        });
+      }
+    }),
+  deleteSubscription: authorizedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      try {
+        const result = await db.delete(subscriptions).where(eq(subscriptions.id, input.id));
+
+        if (!result.rowCount) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Abonelik bulunamadı.',
+          });
+        }
+
+        return { message: 'Abonelik başarıyla silindi.' };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+
+        console.error('Failed to delete subscription: ', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Abonelik silinirken bir hata ile karşılaşıldı.',
         });
       }
     }),

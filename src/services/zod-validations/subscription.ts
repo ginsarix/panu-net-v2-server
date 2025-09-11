@@ -1,10 +1,14 @@
-import z from 'zod/v4';
+import { z } from 'zod';
 
 import { updateAtleast1FieldMessage } from '../../constants/messages';
 
+const isoDateOnly = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid ISO date (YYYY-MM-DD expected)');
+
 export const CreateSubscriptionSchema = z.object({
-  startDate: z.iso.date(),
-  endDate: z.iso.date(),
+  startDate: isoDateOnly,
+  endDate: isoDateOnly,
   subscriptionType: z.enum(['domain', 'ssl', 'hosting', 'mail']),
   userId: z.number().int().positive(),
 });
