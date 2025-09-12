@@ -14,10 +14,9 @@ import { db } from '../../db/index';
 import { users } from '../../db/schema/user';
 import { usersToCompanies } from '../../db/schema/user-company';
 import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user';
-import type { User } from '../../types/user';
 import { authorizedProcedure, router } from '../index';
 
-const stripSensitive = (user: User) => {
+const stripSensitive = (user: typeof users.$inferSelect) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, ...rest } = user;
   return rest;
@@ -192,7 +191,7 @@ export const userRouter = router({
 
         return {
           message: 'Kullanıcı güncellendi.',
-          updatedOn: serverValues.updatedOn,
+          updatedOn: serverValues.updatedOn!,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;

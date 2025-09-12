@@ -135,7 +135,7 @@ export const subscriptionCustomerRouter = router({
         }
 
         return {
-          updatedOn: updatedSubscriptionCustomer[0].updatedOn,
+          updatedOn: updatedSubscriptionCustomer[0].updatedOn!,
           message: 'Müşteri başarıyla düzenlendi.',
         };
       } catch (error) {
