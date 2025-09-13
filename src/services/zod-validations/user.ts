@@ -15,8 +15,8 @@ export const CreateUserSchema = z.object({
   password: z.string().min(8, passwordAtleast8CharactersMessage),
   phone: z
     .string()
-    .optional()
-    .refine((val) => val === undefined || val.length === 0 || val.length >= 1, {
+    .nullish()
+    .refine((val) => !val || val.length === 0 || val.length >= 1, {
       message: phoneInvalidMessage,
     }),
   role: z
