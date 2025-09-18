@@ -6,10 +6,10 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
-    "dev:worker": "tsx watch src/services/queue-system/workers/subscription-expiry-email-worker.ts",
+    "dev:worker": "tsx watch src/services/queue-system/workers/subscription-expiry-worker.ts",
     "dev:debug": "tsx --inspect-brk src/index.ts",
     "start": "node dist/index.js",
-    "start:worker": "node dist/services/queue-system/workers/subscription-expiry-email-worker.js",
+    "start:worker": "node dist/services/queue-system/workers/subscription-expiry-worker.js",
     "start:prod": "node dist/bundle.js",
     "lint": "eslint . --config eslint.config.ts",
     "format": "prettier --write src/"
@@ -24,6 +24,7 @@
     "@fastify/cors": "^11.0.1",
     "@fastify/redis": "^7.0.2",
     "@fastify/session": "^11.1.0",
+    "@netgsm/sms": "^1.1.10",
     "@trpc/server": "^11.4.2",
     "@types/uuid": "^10.0.0",
     "axios": "^1.10.0",

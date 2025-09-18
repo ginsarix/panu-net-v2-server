@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { asc, desc, eq, ilike } from 'drizzle-orm';
 import z from 'zod';
 
-import { emailAlreadyExistsMessage } from '../../constants/messages';
+import { emailAlreadyExistsMessage, phoneAlreadyExistsMessage } from '../../constants/messages';
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination';
 import { db } from '../../db/index';
 import { subscriptionCustomers } from '../../db/schema/subscription-customer';
@@ -94,6 +94,29 @@ export const subscriptionCustomerRouter = router({
           throw new TRPCError({
             code: 'CONFLICT',
             message: emailAlreadyExistsMessage,
+          });
+        }
+
+        if (input.remindExpiryWithSms && !input.phone) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'SMS hatırlatmaları seçildi ama telefon numarası girilmedi.',
+          });
+        }
+
+        const phoneAlreadyExists = input.phone
+          ? (
+              await db
+                .select()
+                .from(subscriptionCustomers)
+                .where(eq(subscriptionCustomers.phone, input.phone))
+            ).length
+          : false;
+
+        if (phoneAlreadyExists) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: phoneAlreadyExistsMessage,
           });
         }
 

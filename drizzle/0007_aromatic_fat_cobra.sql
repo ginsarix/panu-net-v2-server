@@ -1,0 +1,2 @@
+ALTER TABLE "subscription_customers" ALTER COLUMN "remind_expiry_with_email" SET DEFAULT false;--> statement-breakpoint
+ALTER TABLE "subscription_customers" ALTER COLUMN "remind_expiry_with_sms" SET DEFAULT false;

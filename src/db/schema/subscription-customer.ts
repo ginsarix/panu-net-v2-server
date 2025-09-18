@@ -6,6 +6,8 @@ export const subscriptionCustomers = pgTable('subscription_customers', {
   title: varchar('title', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 32 }),
   email: varchar('email', { length: 255 }).notNull(),
+  remindExpiryWithEmail: boolean('remind_expiry_with_email').notNull().default(false),
+  remindExpiryWithSms: boolean('remind_expiry_with_sms').notNull().default(false),
   address: varchar('address', { length: 255 }),
   status: boolean('status').notNull(),
   manager: varchar('manager', { length: 255 }),

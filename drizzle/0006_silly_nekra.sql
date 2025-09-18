@@ -1,0 +1,2 @@
+ALTER TABLE "subscription_customers" ADD COLUMN "remind_expiry_with_email" boolean NOT NULL;--> statement-breakpoint
+ALTER TABLE "subscription_customers" ADD COLUMN "remind_expiry_with_sms" boolean NOT NULL;

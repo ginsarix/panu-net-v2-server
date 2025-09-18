@@ -16,6 +16,8 @@ export const CreateSubscriptionCustomerSchema = z.object({
       message: phoneInvalidMessage,
     }),
   email: z.string().email(emailInvalidMessage),
+  remindExpiryWithEmail: z.boolean(),
+  remindExpiryWithSms: z.boolean(),
   address: z.string().min(1, 'Adres gereklidir.'),
   status: z.boolean(),
   manager: z.string().min(1, 'Yetkili ismi gereklidir.'),

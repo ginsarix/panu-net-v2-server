@@ -15,6 +15,7 @@ export const requiredFieldMessage = 'Bu alan gereklidir.';
 export const nameRequiredMessage = 'İsim gereklidir.';
 export const emailInvalidMessage = 'E-posta geçersiz.';
 export const emailAlreadyExistsMessage = 'Bu e-posta zaten kayıtlı.';
+export const phoneAlreadyExistsMessage = 'Bu telefon numarası zaten kayıtlı.';
 export const passwordAtleast8CharactersMessage = 'Şifre en az 8 karakter olmalı.';
 export const phoneInvalidMessage = 'Telefon geçersiz.';
 export const roleInvalidMessage = 'Rol geçersiz.';
