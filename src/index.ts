@@ -55,8 +55,10 @@ fastify.addHook('onReady', async () => {
     {},
     {
       repeat: {
-        every: 24 * 60 * 60 * 1000, // 24 hours in ms
+        every: 24 * 60 * 60 * 1000, // 24 * 60 * 60 * 1000, // 24 hours in ms || debug -> 1 * 60 * 1000 // 1 minutes in milliseconds
+        immediately: false,
       },
+      removeOnComplete: true,
     },
   );
 });

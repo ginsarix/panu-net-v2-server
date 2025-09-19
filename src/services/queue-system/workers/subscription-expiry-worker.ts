@@ -36,6 +36,7 @@ const worker = new Worker(
         remindExpiryWithEmail: subscriptionCustomers.remindExpiryWithEmail,
         remindExpiryWithSms: subscriptionCustomers.remindExpiryWithSms,
         endDate: subscriptions.endDate,
+        subscriptionType: subscriptions.subscriptionType,
       })
       .from(subscriptionCustomers)
       .innerJoin(subscriptions, eq(subscriptionCustomers.id, subscriptions.userId))
@@ -49,7 +50,7 @@ const worker = new Worker(
       const subscriptionExpiry = parseISO(customer.endDate);
       const daysLeft = differenceInCalendarDays(subscriptionExpiry, today);
 
-      const subject = `Aboneliğinizi yenilemediğiniz takdirde ${daysLeft} gün sonra sona erecektir.`;
+      const subject = `${customer.subscriptionType[0].toUpperCase() + customer.subscriptionType.slice(1)} aboneliğinizi yenilemediğiniz takdirde ${daysLeft} gün sonra sona erecektir.`;
 
       try {
         if (customer.remindExpiryWithEmail && customer.remindExpiryWithSms) {
@@ -72,7 +73,7 @@ const worker = new Worker(
     } catch (error) {
       console.error('An error occurred while sending SMS messages: ', error);
     }
-    return { emailsSent, smsSent: smsMessages.length };
+    return JSON.stringify({ emailsSent, smsSent: smsMessages.length });
   },
   { connection },
 );
