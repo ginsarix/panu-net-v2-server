@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { customAlphabet } from 'nanoid';
 import { v4 as uuid } from 'uuid';
-import z from 'zod';
+import { z } from 'zod';
 
 import { saltRounds } from '../../constants/auth';
 import {

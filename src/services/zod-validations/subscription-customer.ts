@@ -7,20 +7,20 @@ import {
 } from '../../constants/messages';
 
 export const CreateSubscriptionCustomerSchema = z.object({
-  customerCode: z.number().int().positive(),
+  customerCode: z.number().int().positive().nullish(),
   title: z.string().min(1, 'Ünvan gereklidir.'),
   phone: z
     .string()
-    .optional()
-    .refine((val) => val === undefined || val.length === 0 || val.length >= 1, {
+    .nullish()
+    .refine((val) => val === undefined || val === null || val.length === 0 || val.length >= 1, {
       message: phoneInvalidMessage,
     }),
   email: z.string().email(emailInvalidMessage),
   remindExpiryWithEmail: z.boolean(),
   remindExpiryWithSms: z.boolean(),
-  address: z.string().min(1, 'Adres gereklidir.'),
+  address: z.string().nullish(),
   status: z.boolean(),
-  manager: z.string().min(1, 'Yetkili ismi gereklidir.'),
+  manager: z.string().nullish(),
 });
 
 export const UpdateSubscriptionCustomerSchema = CreateSubscriptionCustomerSchema.partial().refine(

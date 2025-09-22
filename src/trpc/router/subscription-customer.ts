@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { asc, desc, eq, ilike } from 'drizzle-orm';
-import z from 'zod';
+import { z } from 'zod';
 
 import { emailAlreadyExistsMessage, phoneAlreadyExistsMessage } from '../../constants/messages';
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination';
