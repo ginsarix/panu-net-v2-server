@@ -120,15 +120,18 @@ export const subscriptionCustomerRouter = router({
           });
         }
 
-        const [result] = await db.insert(subscriptionCustomers).values(input).returning({
-          id: subscriptionCustomers.id,
-          creationDate: subscriptionCustomers.creationDate,
-        });
+        const [createdSubscriptionCustomer] = await db
+          .insert(subscriptionCustomers)
+          .values(input)
+          .returning({
+            id: subscriptionCustomers.id,
+            creationDate: subscriptionCustomers.creationDate,
+          });
 
         return {
           message: 'Müşteri başarıyla oluşturuldu.',
-          id: result.id,
-          creationDate: result.creationDate,
+          id: createdSubscriptionCustomer.id,
+          creationDate: createdSubscriptionCustomer.creationDate,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
@@ -144,13 +147,13 @@ export const subscriptionCustomerRouter = router({
     .input(z.object({ id: z.number().int().positive(), data: UpdateSubscriptionCustomerSchema }))
     .mutation(async ({ input }) => {
       try {
-        const updatedSubscriptionCustomer = await db
+        const updatedSubscriptionCustomers = await db
           .update(subscriptionCustomers)
           .set(input.data)
           .where(eq(subscriptionCustomers.id, input.id))
-          .returning();
+          .returning({ updatedOn: subscriptionCustomers.updatedOn });
 
-        if (!updatedSubscriptionCustomer.length) {
+        if (!updatedSubscriptionCustomers.length) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: 'Müşteri bulunamadı.',
@@ -158,7 +161,7 @@ export const subscriptionCustomerRouter = router({
         }
 
         return {
-          updatedOn: updatedSubscriptionCustomer[0].updatedOn!,
+          updatedOn: updatedSubscriptionCustomers[0].updatedOn!,
           message: 'Müşteri başarıyla düzenlendi.',
         };
       } catch (error) {

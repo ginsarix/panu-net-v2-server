@@ -7,16 +7,20 @@ import type {
   WsGetCreditCountResponse,
   WsGetPeriodsResponse,
   WsLoginResponse,
+  WsResponse,
 } from '../../types/web-service';
 import {
   constructGetCreditCount,
   constructGetPeriods,
   constructLogin,
+  constructPing,
   sourceWithSis,
 } from '../../utils/web-service';
 import { getCompanyById } from '../companiesDb';
 
-export const login = async (request: FastifyRequest) => {
+type LoginResult = 'successfully_logged_in' | 'already_logged_in' | 'api_error';
+
+export const login = async (request: FastifyRequest): Promise<LoginResult> => {
   if (!request.session.selectedCompanyId) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
@@ -32,16 +36,30 @@ export const login = async (request: FastifyRequest) => {
     });
   }
 
+  if (request.session.wsSessionId) {
+    const pingResponse = await myAxios.post<Omit<WsResponse, 'msg'>>(
+      sourceWithSis(result.webServiceSource),
+      constructPing(request.session.wsSessionId),
+    );
+
+    if (pingResponse.data.code === '200') return 'already_logged_in';
+  }
+
   const response = await myAxios.post<WsLoginResponse>(
     sourceWithSis(result.webServiceSource),
     constructLogin(result.webServiceUsername, result.apiSecret, { apikey: result.apiKey }),
   );
 
-  if (response.data.code === '200') request.session.wsSessionId = response.data.msg;
-  else console.error(response);
+  if (response.data.code === '200') {
+    request.session.wsSessionId = response.data.msg;
+    return 'successfully_logged_in';
+  } else {
+    console.error(response);
+    return 'api_error';
+  }
 };
 
-export const getPeriods = async (request: FastifyRequest, companyCode: string) => {
+export const getPeriods = async (request: FastifyRequest, companyCode: number) => {
   if (!request.session.wsSessionId) {
     throw new TRPCError({
       code: 'FORBIDDEN',

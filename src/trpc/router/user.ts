@@ -124,19 +124,19 @@ export const userRouter = router({
 
       input.password = await bcrypt.hash(input.password, saltRounds);
 
-      const [user] = await db
+      const [createdUser] = await db
         .insert(users)
         .values(input)
         .returning({ id: users.id, creationDate: users.creationDate });
 
-      const relationValues = input.companies.map((c) => ({ userId: user.id, companyId: c }));
+      const relationValues = input.companies.map((c) => ({ userId: createdUser.id, companyId: c }));
 
       if (relationValues.length) await db.insert(usersToCompanies).values(relationValues);
 
       return {
         message: 'Kullanıcı başarıyla oluşturuldu.',
-        id: user.id,
-        creationDate: user.creationDate,
+        id: createdUser.id,
+        creationDate: createdUser.creationDate,
       };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
@@ -174,24 +174,22 @@ export const userRouter = router({
           input.data.password = await bcrypt.hash(input.data.password, saltRounds);
         }
 
-        const result = await db
+        const editedUsers = await db
           .update(users)
           .set(input.data)
           .where(eq(users.id, input.id))
           .returning({ id: users.id, updatedOn: users.updatedOn });
 
-        if (!result.length) {
+        if (!editedUsers.length) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: userNotFoundMessage,
           });
         }
 
-        const [serverValues] = result;
-
         return {
           message: 'Kullanıcı güncellendi.',
-          updatedOn: serverValues.updatedOn!,
+          updatedOn: editedUsers[0].updatedOn!,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;

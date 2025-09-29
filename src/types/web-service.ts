@@ -23,7 +23,7 @@ export interface WsLoginRequest {
 export interface WsGetAccountCardListRequest {
   scf_carikart_listele: {
     session_id: string;
-    firma_kodu: string;
+    firma_kodu: number;
     donem_kodu: number;
   } & WsRequestGenerics;
 }
@@ -31,7 +31,7 @@ export interface WsGetAccountCardListRequest {
 export interface WsGetPeriodsRequest {
   sis_firma_getir: {
     session_id: string;
-    firma_kodu: string;
+    firma_kodu: number;
   } & WsRequestGenerics;
 }
 

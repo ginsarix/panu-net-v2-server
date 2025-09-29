@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ALTER COLUMN "code" SET DATA TYPE integer USING code::integer;

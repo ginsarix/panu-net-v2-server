@@ -1,7 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { scfEndpoint } from '../../constants/endpoints';
 import {
   badRequestMessage,
   notFoundMessage,
@@ -14,16 +13,14 @@ import { getCompanyById } from '../../services/companiesDb';
 import { login } from '../../services/web-service/sis';
 import type { WsAccountCardListResponse } from '../../types/web-service';
 import { parseIntBase10 } from '../../utils/parsing';
-import { constructGetAccountCards, sourceWithSlash } from '../../utils/web-service';
+import { constructGetAccountCards, sourceWithScf } from '../../utils/web-service';
 import { protectedProcedure, router } from '../index';
-
-const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;
 
 export const debtorRouter = router({
   getDebtors: protectedProcedure
     .input(
       z.object({
-        companyCode: z.string(),
+        companyCode: z.number().int().positive(),
       }),
     )
     .query(async ({ input, ctx }) => {

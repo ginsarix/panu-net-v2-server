@@ -1,6 +1,7 @@
-import { sisEndpoint } from '../constants/endpoints';
+import { scfEndpoint, sisEndpoint } from '../constants/endpoints';
 import type {
   WsFilters,
+  WsGetAccountCardListRequest,
   WsGetCreditCountRequest,
   WsGetPeriodsRequest,
   WsLoginRequest,
@@ -12,65 +13,59 @@ export const constructLogin = (
   params?: Record<string, unknown>,
   filters?: WsFilters,
   disconnect_same_user: 'True' | 'False' = 'False',
-): WsLoginRequest => {
-  return {
-    login: {
-      username,
-      password,
-      disconnect_same_user,
-      params,
-      filters,
-    },
-  };
-};
+): WsLoginRequest => ({
+  login: {
+    username,
+    password,
+    disconnect_same_user,
+    params,
+    filters,
+  },
+});
+
+export const constructPing = (sessionId: string) => ({ sis_ping: { session_id: sessionId } });
 
 export const constructGetAccountCards = (
   sessionId: string,
-  companyCode: string,
+  companyCode: number,
   selectedPeriodCode: number = 0,
   params?: Record<string, unknown>,
   filters?: WsFilters,
-) => {
-  return {
-    scf_carikart_listele: {
-      session_id: sessionId,
-      firma_kodu: companyCode,
-      donem_kodu: selectedPeriodCode,
-      params,
-      filters,
-    },
-  };
-};
+): WsGetAccountCardListRequest => ({
+  scf_carikart_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: selectedPeriodCode,
+    params,
+    filters,
+  },
+});
 
 export const constructGetPeriods = (
   sessionId: string,
-  companyCode: string,
+  companyCode: number,
   params?: Record<string, unknown>,
   filters?: WsFilters,
-): WsGetPeriodsRequest => {
-  return {
-    sis_firma_getir: {
-      session_id: sessionId,
-      firma_kodu: companyCode,
-      params,
-      filters,
-    },
-  };
-};
+): WsGetPeriodsRequest => ({
+  sis_firma_getir: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    params,
+    filters,
+  },
+});
 
 export const constructGetCreditCount = (
   sessionId: string,
   params?: Record<string, unknown>,
   filters?: WsFilters,
-): WsGetCreditCountRequest => {
-  return {
-    sis_kontor_sorgula: {
-      session_id: sessionId,
-      params,
-      filters,
-    },
-  };
-};
+): WsGetCreditCountRequest => ({
+  sis_kontor_sorgula: {
+    session_id: sessionId,
+    params,
+    filters,
+  },
+});
 
 export const sourceWithSlash = (wsSource: string) => {
   return wsSource.endsWith('/') ? wsSource : wsSource + '/';
@@ -81,3 +76,5 @@ export const sourceWithSis = (wsSource: string) => {
 
   return wsSource + sisEndpoint;
 };
+
+export const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;

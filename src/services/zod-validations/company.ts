@@ -9,7 +9,7 @@ import { dateValidation } from './shared';
 
 export const CreateCompanySchema = z.object({
   name: z.string().min(1, nameRequiredMessage),
-  code: z.string(),
+  code: z.number().int().positive(),
   manager: z.string().min(1, 'Yönetici isimi gereklidir.'),
   phone: z.string().nullable().optional(),
   licenseDate: dateValidation,
@@ -18,7 +18,6 @@ export const CreateCompanySchema = z.object({
   }),
   webServiceSource: z.string().min(1, 'Web Service kaynağı gereklidir.').url(),
   webServiceUsername: z.string().min(1, 'Web Service kullanıcı adı gereklidir.'),
-  serverName: z.string().min(1, 'Sunucu isimi gereklidir.'),
   apiKey: z.string(),
   apiSecret: z.string().min(1, 'API Şifresi gereklidir.'),
 });

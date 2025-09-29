@@ -152,8 +152,15 @@ export const companyRouter = router({
 
   createCompany: authorizedProcedure.input(CreateCompanySchema).mutation(async ({ input }) => {
     try {
-      await db.insert(companies).values(input);
-      return { message: 'Şirket başarıyla oluşturuldu.' };
+      const [createdCompany] = await db
+        .insert(companies)
+        .values(input)
+        .returning({ id: companies.id, creationDate: companies.creationDate });
+      return {
+        id: createdCompany.id,
+        creationDate: createdCompany.creationDate,
+        message: 'Şirket başarıyla oluşturuldu.',
+      };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
       console.error('Failed to create company: ', error);
@@ -191,16 +198,20 @@ export const companyRouter = router({
           }
         }
 
-        const result = await db.update(companies).set(updateDto).where(eq(companies.id, id));
+        const updatedCompanies = await db
+          .update(companies)
+          .set(updateDto)
+          .where(eq(companies.id, id))
+          .returning({ updatedOn: companies.updatedOn });
 
-        if (!result.rowCount) {
+        if (!updatedCompanies.length) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: companyNotFoundMessage,
           });
         }
 
-        return { message: 'Şirket güncellendi.' };
+        return { updatedOn: updatedCompanies[0].updatedOn, message: 'Şirket güncellendi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         console.error('Failed to update company: ', error);
@@ -393,7 +404,7 @@ export const companyRouter = router({
   }),
 
   getPeriods: protectedProcedure
-    .input(z.object({ companyCode: z.string() }))
+    .input(z.object({ companyCode: z.number().int().positive() }))
     .query(async ({ input, ctx }) => {
       try {
         await login(ctx.req);

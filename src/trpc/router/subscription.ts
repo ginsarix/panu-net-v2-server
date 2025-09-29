@@ -93,15 +93,15 @@ export const subscriptionRouter = router({
     .input(CreateSubscriptionSchema)
     .mutation(async ({ input }) => {
       try {
-        const [result] = await db
+        const [createdSubscription] = await db
           .insert(subscriptions)
           .values(input)
           .returning({ id: subscriptions.id, creationDate: subscriptions.creationDate });
 
         return {
           message: 'Abonelik başarıyla eklendi.',
-          id: result.id,
-          creationDate: result.creationDate,
+          id: createdSubscription.id,
+          creationDate: createdSubscription.creationDate,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
@@ -123,13 +123,13 @@ export const subscriptionRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        const updatedSubscription = await db
+        const updatedSubscriptions = await db
           .update(subscriptions)
           .set(input.data)
           .where(eq(subscriptions.id, input.id))
           .returning();
 
-        if (!updatedSubscription.length) {
+        if (!updatedSubscriptions.length) {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: 'Abonelik bulunamadı.',
@@ -137,7 +137,7 @@ export const subscriptionRouter = router({
         }
 
         return {
-          updatedOn: updatedSubscription[0].updatedOn!,
+          updatedOn: updatedSubscriptions[0].updatedOn!,
           message: 'Abonelik başarıyla düzenlendi.',
         };
       } catch (error) {
