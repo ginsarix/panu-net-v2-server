@@ -3,6 +3,7 @@ import { authRouter } from './auth';
 import { companyRouter } from './company';
 import { creditorRouter } from './creditor';
 import { debtorRouter } from './debtor';
+import { reportRouter } from './report';
 import { subscriptionRouter } from './subscription';
 import { subscriptionCustomerRouter } from './subscription-customer';
 import { userRouter } from './user';
@@ -15,6 +16,7 @@ export const appRouter = router({
   creditor: creditorRouter,
   subscription: subscriptionRouter,
   subscriptionCustomer: subscriptionCustomerRouter,
+  report: reportRouter,
 });
 
 export type AppRouter = typeof appRouter;

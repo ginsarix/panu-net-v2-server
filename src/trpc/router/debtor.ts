@@ -1,94 +1,60 @@
 import { TRPCError } from '@trpc/server';
-import { z } from 'zod';
 
-import {
-  badRequestMessage,
-  notFoundMessage,
-  selectedCompanyNotFoundMessage,
-  serverErrorMessage,
-  unexpectedErrorMessage,
-} from '../../constants/messages';
+import { unexpectedErrorMessage } from '../../constants/messages';
 import myAxios from '../../services/api-base';
 import { getCompanyById } from '../../services/companiesDb';
 import { login } from '../../services/web-service/sis';
 import type { WsAccountCardListResponse } from '../../types/web-service';
-import { parseIntBase10 } from '../../utils/parsing';
-import { constructGetAccountCards, sourceWithScf } from '../../utils/web-service';
+import { constructGetAccountCards, handleErrorCodes, sourceWithScf } from '../../utils/web-service';
 import { protectedProcedure, router } from '../index';
 
 export const debtorRouter = router({
-  getDebtors: protectedProcedure
-    .input(
-      z.object({
-        companyCode: z.number().int().positive(),
-      }),
-    )
-    .query(async ({ input, ctx }) => {
-      try {
-        await login(ctx.req);
+  getDebtors: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      await login(ctx.req);
 
-        if (!ctx.req.session.selectedCompanyId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: selectedCompanyNotFoundMessage,
-          });
-        }
+      const [message, code, result] = await getCompanyById(ctx.req.session.selectedCompanyId!);
 
-        const [message, code, result] = await getCompanyById(ctx.req.session.selectedCompanyId);
-
-        if (!result) {
-          throw new TRPCError({
-            code: code || 'INTERNAL_SERVER_ERROR',
-            message: message || unexpectedErrorMessage,
-          });
-        }
-
-        const scfResponse = await myAxios.post<WsAccountCardListResponse>(
-          sourceWithScf(result.webServiceSource),
-          constructGetAccountCards(
-            ctx.req.session.wsSessionId!,
-            input.companyCode,
-            ctx.req.session.selectedPeriodCode,
-            {
-              selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
-            },
-            [{ field: 'ba', operator: '=', value: '(B)' }],
-          ),
-        );
-
-        const responseCode = parseIntBase10(scfResponse.data.code || '500');
-
-        if (responseCode >= 400) {
-          if (responseCode === 404) {
-            throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: scfResponse?.data.msg || notFoundMessage,
-            });
-          } else if (responseCode >= 400 && responseCode < 500) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: scfResponse?.data.msg || badRequestMessage,
-            });
-          } else {
-            throw new TRPCError({
-              code: 'INTERNAL_SERVER_ERROR',
-              message: scfResponse?.data.msg || serverErrorMessage,
-            });
-          }
-        }
-
-        return {
-          message: scfResponse?.data.msg,
-          payload: scfResponse?.data,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-
-        console.error('Failed to get debtors: ', error);
+      if (!result) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Borçlu cariler getirilirken bir hata ile karşılaşıldı.',
+          code: code || 'INTERNAL_SERVER_ERROR',
+          message: message || unexpectedErrorMessage,
         });
       }
-    }),
+
+      const scfResponse = await myAxios.post<WsAccountCardListResponse>(
+        sourceWithScf(result.webServiceSource),
+        constructGetAccountCards(
+          ctx.req.session.wsSessionId!,
+          result.code,
+          ctx.req.session.selectedPeriodCode,
+          {
+            selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
+          },
+          [{ field: 'ba', operator: '=', value: '(B)' }],
+        ),
+      );
+
+      const responseMsg = scfResponse.data.msg;
+
+      handleErrorCodes(scfResponse.data.code, {
+        notFound: responseMsg,
+        badRequest: responseMsg,
+        internalServerError: responseMsg,
+      });
+
+      return {
+        message: responseMsg,
+        payload: scfResponse.data,
+      };
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+
+      console.error('Failed to get debtors: ', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Borçlu cariler getirilirken bir hata ile karşılaşıldı.',
+      });
+    }
+  }),
 });

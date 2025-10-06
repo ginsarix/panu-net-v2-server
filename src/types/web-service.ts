@@ -4,10 +4,10 @@ export interface WsResponse {
 }
 
 export type WsFilterOperators = '<' | '>' | '<=' | '>=' | '!' | '=' | 'IN' | 'NOT IN';
-export type WsFilters = { field: string; operator: WsFilterOperators; value: string }[];
+export type WsFilter = { field: string; operator: WsFilterOperators; value: string };
 export interface WsRequestGenerics {
   params?: Record<string, unknown>;
-  filters?: WsFilters;
+  filters?: WsFilter[];
   limit?: number;
   offset?: number;
 }
@@ -35,6 +35,14 @@ export interface WsGetPeriodsRequest {
   } & WsRequestGenerics;
 }
 
+export interface WsGetInvoicesRequest {
+  scf_fatura_listele_ayrintili: {
+    session_id: string;
+    firma_kodu: number;
+    donem_kodu: number;
+  } & WsRequestGenerics;
+}
+
 export interface WsGetCreditCountRequest {
   sis_kontor_sorgula: {
     session_id: string;
@@ -43,7 +51,6 @@ export interface WsGetCreditCountRequest {
 
 export type WsLoginResponse = WsResponse;
 
-// i know, retarded. blame the api.
 export interface WsAccountCardListResponse extends WsResponse {
   result: {
     carikartkodu: string;
@@ -68,4 +75,40 @@ export interface WsGetCreditCountResponse extends Omit<WsResponse, 'msg'> {
   result: {
     kontorsayisi: number;
   };
+}
+
+export interface WsGetWaybillListResponse extends WsResponse {
+  result: {
+    aciklama: string;
+    turuack: string;
+    fisno: string;
+    belgeno2: string;
+    cariunvan: string;
+    doviz: string;
+    stokaciklama: string;
+    stokkartkodu: string;
+    tutari: string;
+    miktar: string;
+    fatbirimi: string;
+    kdvtutari: string;
+    indirimtutari: string;
+    toplamtutar: string;
+  }[];
+}
+
+export interface WsGetInvoiceListResponse extends WsResponse {
+  result: {
+    aciklama: string;
+    turuack: string;
+    belgeno2: string;
+    kalemdovizi: string;
+    fisno: string;
+    miktar: string;
+    birim: string;
+    unvan: string;
+    kdvharictutar: string;
+    kdvtutari: string;
+    indirimtutari: string;
+    toplamtutar: string;
+  }[];
 }

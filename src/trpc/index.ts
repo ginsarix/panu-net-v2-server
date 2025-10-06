@@ -1,13 +1,14 @@
 import type { FastifySessionObject } from '@fastify/session';
 import { TRPCError, initTRPC } from '@trpc/server';
 import { eq } from 'drizzle-orm';
+import superjson from 'superjson';
 
 import { unauthorizedErrorMessage } from '../constants/messages';
 import { db } from '../db/index';
 import { users } from '../db/schema/user';
 import type { Context } from './context';
 
-const t = initTRPC.context<Context>().create();
+const t = initTRPC.context<Context>().create({ transformer: superjson });
 
 export const router = t.router;
 export const publicProcedure = t.procedure.use(async function doesUserExist(opts) {

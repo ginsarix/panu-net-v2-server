@@ -128,7 +128,7 @@ export const companyRouter = router({
         if (!userCompany.length)
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'You do not have access to this company.',
+            message: 'Bu şirkete erişiminiz yoktur.',
           });
         const [message, code, result] = await getCompanyById(input.id);
 
@@ -297,7 +297,7 @@ export const companyRouter = router({
         return {
           message:
             result.length !== ids.length
-              ? 'Bazı firmalar silindi, bazıları bulunamadı.'
+              ? 'Bazı firmalar silindi, bazıları silinemedi.'
               : 'Silme operasyonu hatasız geçti',
           deletedRows: result.length,
           results,

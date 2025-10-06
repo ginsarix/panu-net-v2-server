@@ -1,7 +1,11 @@
 import { TRPCError } from '@trpc/server';
 import type { FastifyRequest } from 'fastify';
 
-import { unauthorizedErrorMessage, unexpectedErrorMessage } from '../../constants/messages';
+import {
+  selectedCompanyNotFoundMessage,
+  unauthorizedErrorMessage,
+  unexpectedErrorMessage,
+} from '../../constants/messages';
 import myAxios from '../../services/api-base';
 import type {
   WsGetCreditCountResponse,
@@ -24,7 +28,7 @@ export const login = async (request: FastifyRequest): Promise<LoginResult> => {
   if (!request.session.selectedCompanyId) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
-      message: 'Seçili şirket bulunamadı.',
+      message: selectedCompanyNotFoundMessage,
     });
   }
 

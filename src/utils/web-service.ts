@@ -1,17 +1,23 @@
+import { TRPCError } from '@trpc/server';
+import { addDays, format } from 'date-fns';
+
 import { scfEndpoint, sisEndpoint } from '../constants/endpoints';
+import { badRequestMessage, notFoundMessage, serverErrorMessage } from '../constants/messages';
 import type {
-  WsFilters,
+  WsFilter,
   WsGetAccountCardListRequest,
   WsGetCreditCountRequest,
+  WsGetInvoicesRequest,
   WsGetPeriodsRequest,
   WsLoginRequest,
 } from '../types/web-service';
+import { parseIntBase10 } from './parsing';
 
 export const constructLogin = (
   username: string,
   password: string,
   params?: Record<string, unknown>,
-  filters?: WsFilters,
+  filters?: WsFilter[],
   disconnect_same_user: 'True' | 'False' = 'False',
 ): WsLoginRequest => ({
   login: {
@@ -30,7 +36,7 @@ export const constructGetAccountCards = (
   companyCode: number,
   selectedPeriodCode: number = 0,
   params?: Record<string, unknown>,
-  filters?: WsFilters,
+  filters?: WsFilter[],
 ): WsGetAccountCardListRequest => ({
   scf_carikart_listele: {
     session_id: sessionId,
@@ -41,11 +47,43 @@ export const constructGetAccountCards = (
   },
 });
 
+export const constructGetWaybill = (
+  sessionId: string,
+  companyCode: number,
+  selectedPeriodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_irsaliye_listele_ayrintili: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: selectedPeriodCode,
+    params,
+    filters,
+  },
+});
+
+export const constructGetInvoices = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+): WsGetInvoicesRequest => ({
+  scf_fatura_listele_ayrintili: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const constructGetPeriods = (
   sessionId: string,
   companyCode: number,
   params?: Record<string, unknown>,
-  filters?: WsFilters,
+  filters?: WsFilter[],
 ): WsGetPeriodsRequest => ({
   sis_firma_getir: {
     session_id: sessionId,
@@ -58,7 +96,7 @@ export const constructGetPeriods = (
 export const constructGetCreditCount = (
   sessionId: string,
   params?: Record<string, unknown>,
-  filters?: WsFilters,
+  filters?: WsFilter[],
 ): WsGetCreditCountRequest => ({
   sis_kontor_sorgula: {
     session_id: sessionId,
@@ -78,3 +116,56 @@ export const sourceWithSis = (wsSource: string) => {
 };
 
 export const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;
+
+/**
+ * @param errorCodeMessages If not provided, error messages will be generic
+ * @throws TRPCErrors
+ */
+export const handleErrorCodes = (
+  code: string | number,
+  errorCodeMessages?: {
+    notFound: string;
+    badRequest: string;
+    internalServerError: string;
+  },
+) => {
+  const parsedCode = typeof code === 'string' ? parseIntBase10(code || '500') : code;
+
+  if (parsedCode >= 400) {
+    if (parsedCode === 404) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: errorCodeMessages?.notFound || notFoundMessage,
+      });
+    }
+
+    if (parsedCode < 500) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: errorCodeMessages?.badRequest || badRequestMessage,
+      });
+    }
+
+    throw new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: errorCodeMessages?.internalServerError || serverErrorMessage,
+    });
+  }
+};
+
+export const dateRangeFilters = (startDate: Date, endDate: Date): WsFilter[] => {
+  return [
+    { field: '_cdate', operator: '>=', value: format(startDate, 'yyyy-MM-dd') },
+    { field: '_cdate', operator: '<=', value: format(endDate, 'yyyy-MM-dd') },
+  ];
+};
+
+export const createdAtTodayFilters = (): WsFilter[] => {
+  const today = new Date();
+  const tomorrow = addDays(today, 1);
+
+  return [
+    { field: '_cdate', operator: '>=', value: format(today, 'yyyy-MM-dd') },
+    { field: '_cdate', operator: '<', value: format(tomorrow, 'yyyy-MM-dd') },
+  ];
+};
