@@ -4,7 +4,7 @@ import fastifyCors from '@fastify/cors';
 import fastifyRedis from '@fastify/redis';
 import fastifySession from '@fastify/session';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
-import * as dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import Fastify from 'fastify';
 import metrics from 'fastify-metrics';
 import RedisStore from 'fastify-session-redis-store';

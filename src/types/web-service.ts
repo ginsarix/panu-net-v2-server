@@ -79,7 +79,6 @@ export interface WsGetCreditCountResponse extends Omit<WsResponse, 'msg'> {
 
 export interface WsGetWaybillListResponse extends WsResponse {
   result: {
-    aciklama: string;
     turuack: string;
     fisno: string;
     belgeno2: string;
@@ -98,7 +97,8 @@ export interface WsGetWaybillListResponse extends WsResponse {
 
 export interface WsGetInvoiceListResponse extends WsResponse {
   result: {
-    aciklama: string;
+    kartaciklama: string;
+    kartkodu: string;
     turuack: string;
     belgeno2: string;
     kalemdovizi: string;

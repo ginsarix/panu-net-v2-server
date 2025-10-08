@@ -72,7 +72,8 @@ export const reportRouter = router({
             ctx.req.session.selectedPeriodCode,
             {
               selectedcolumns: [
-                'aciklama',
+                'kartaciklama',
+                'kartkodu',
                 'belgeno2',
                 'turuack',
                 'fisno',
