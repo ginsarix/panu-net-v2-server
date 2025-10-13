@@ -375,14 +375,14 @@ export const companyRouter = router({
 
   setPeriod: protectedProcedure
     .input(z.object({ periodCode: z.number().int().positive() }))
-    .query(({ input, ctx }) => {
+    .mutation(({ input, ctx }) => {
       try {
         ctx.req.session.selectedPeriodCode = input.periodCode;
 
         return { message: 'Dönem başarıyla seçildi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('An error occurred while getting setting period: ', error);
+        console.error('An error occurred while setting period: ', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Dönem seçilirken bir hata ile karşılaşıldı.',

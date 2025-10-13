@@ -7,12 +7,22 @@ import { unexpectedErrorMessage } from '../../constants/messages';
 import myAxios from '../../services/api-base';
 import { getCompanyById } from '../../services/companiesDb';
 import { login } from '../../services/web-service/sis';
-import type { WsGetInvoiceListResponse, WsGetWaybillListResponse } from '../../types/web-service';
+import type {
+  WsGetBankReceiptListResponse,
+  WsGetCashAccountListResponse,
+  WsGetCashCollectionListResponse,
+  WsGetInvoiceListResponse,
+  WsGetWaybillListResponse,
+} from '../../types/web-service';
 import {
+  constructGetAccountCards,
+  constructGetBankReceipts,
+  constructGetCreditCardCollections,
   constructGetInvoices,
   constructGetWaybill,
   createdAtTodayFilters,
   dateRangeFilters,
+  sourceWithBcs,
   sourceWithScf,
 } from '../../utils/web-service';
 
@@ -58,6 +68,7 @@ export const reportRouter = router({
                 'kdvtutari',
                 'indirimtutari',
                 'toplamtutar',
+                '_cdate',
               ],
             },
             filters,
@@ -85,28 +96,93 @@ export const reportRouter = router({
                 'kdvtutari',
                 'indirimtutari',
                 'toplamtutar',
+                '_cdate',
               ],
             },
             filters,
           ),
         );
 
-        const [waybillsResponse, invoicesResponse] = await Promise.all([
+        const cashAccountsResponsePromise = myAxios.post<WsGetCashAccountListResponse>(
+          sourceWithScf(result.webServiceSource),
+          constructGetAccountCards(
+            ctx.req.session.wsSessionId!,
+            result.code,
+            ctx.req.session.selectedPeriodCode,
+            {
+              selectedcolumns: ['ba', 'alacak', 'borc', 'bakiye', '_cdate'],
+            },
+            filters,
+          ),
+        );
+
+        const bankReceiptsResponsePromise = myAxios.post<WsGetBankReceiptListResponse>(
+          sourceWithBcs(result.webServiceSource),
+          constructGetBankReceipts(
+            ctx.req.session.wsSessionId!,
+            result.code,
+            ctx.req.session.selectedPeriodCode,
+            {
+              selectedcolumns: ['fisno', 'borc', 'turuack', 'aciklama', '_cdate'],
+            },
+            [...filters, { field: 'borc', operator: '!', value: '0' }],
+          ),
+        );
+
+        const creditCardCollectionsResponsePromise = myAxios.post<WsGetCashCollectionListResponse>(
+          sourceWithScf(result.webServiceSource),
+          constructGetCreditCardCollections(
+            ctx.req.session.wsSessionId!,
+            result.code,
+            ctx.req.session.selectedPeriodCode,
+            {
+              selectedcolumns: [
+                'cariunvan',
+                'dovizturu',
+                'toplamtutar',
+                'bankahesapadi',
+                'aciklama',
+                'devirfisno',
+                '_cdate',
+              ],
+            },
+            filters,
+          ),
+        );
+
+        const responses = await Promise.all([
           waybillsResponsePromise,
           invoicesResponsePromise,
+          cashAccountsResponsePromise,
+          bankReceiptsResponsePromise,
+          creditCardCollectionsResponsePromise,
         ]);
+
+        const [
+          waybillsResponse,
+          invoicesResponse,
+          cashAccountsResponse,
+          bankReceiptsResponse,
+          creditCardCollectionsResponse,
+        ] = responses;
 
         console.info(
           chalk.inverse(
             chalk.blueBright('General report requests: '),
-            waybillsResponse.config.data,
-            invoicesResponse.config.data,
+            ...responses.map((r) => r.config.data as unknown),
           ),
         );
+
+        const cashAccountsBalanceSum = cashAccountsResponse.data.result
+          .map((ca) => Number(ca.bakiye))
+          .reduce((acc, val) => acc + val, 0);
 
         return {
           waybills: waybillsResponse.data,
           invoices: invoicesResponse.data,
+          cashAccountsBalanceSum,
+          bankReceipts: bankReceiptsResponse.data,
+          creditCardCollections: creditCardCollectionsResponse.data,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;

@@ -59,10 +59,18 @@ export const authRouter = router({
     try {
       const [user] = await db.select().from(users).where(eq(users.email, input.email));
 
-      const fakeHash = '$2b$12$invalidhashstringforcomparison123456789012345678901234';
-      const passwordCorrect = await bcrypt.compare(input.password, user?.password ?? fakeHash);
+      if (!user) {
+        // prevent timing attacks
+        await bcrypt.hash('dummy', 10);
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'E-posta veya parola yanlış.',
+        });
+      }
 
-      if (!user || !passwordCorrect) {
+      const passwordCorrect = await bcrypt.compare(input.password, user.password);
+
+      if (!passwordCorrect) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
           message: 'E-posta veya parola yanlış.',

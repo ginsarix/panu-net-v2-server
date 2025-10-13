@@ -1,4 +1,4 @@
-import { integer, pgTable, primaryKey, timestamp } from 'drizzle-orm/pg-core';
+import { index, integer, pgTable, primaryKey, timestamp } from 'drizzle-orm/pg-core';
 
 import { companies } from './company';
 import { users } from './user';
@@ -14,5 +14,9 @@ export const usersToCompanies = pgTable(
       .references(() => companies.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.companyId] })],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.companyId] }),
+    index('users_to_companies_user_id_idx').on(t.userId),
+    index('users_to_companies_company_id_idx').on(t.companyId),
+  ],
 );

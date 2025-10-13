@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { addDays, format } from 'date-fns';
 
-import { scfEndpoint, sisEndpoint } from '../constants/endpoints';
+import { bcsEndpoint, scfEndpoint, sisEndpoint } from '../constants/endpoints';
 import { badRequestMessage, notFoundMessage, serverErrorMessage } from '../constants/messages';
 import type {
   WsFilter,
@@ -79,6 +79,54 @@ export const constructGetInvoices = (
   },
 });
 
+export const constructGetCashAccounts = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_kasakart_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
+export const constructGetBankReceipts = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  bcs_banka_fisi_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
+export const constructGetCreditCardCollections = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_kk_tahsilat_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const constructGetPeriods = (
   sessionId: string,
   companyCode: number,
@@ -109,13 +157,11 @@ export const sourceWithSlash = (wsSource: string) => {
   return wsSource.endsWith('/') ? wsSource : wsSource + '/';
 };
 
-export const sourceWithSis = (wsSource: string) => {
-  sourceWithSlash(wsSource);
-
-  return wsSource + sisEndpoint;
-};
+export const sourceWithSis = (wsSource: string) => sourceWithSlash(wsSource) + sisEndpoint;
 
 export const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;
+
+export const sourceWithBcs = (wsSource: string) => sourceWithSlash(wsSource) + bcsEndpoint;
 
 /**
  * @param errorCodeMessages If not provided, error messages will be generic

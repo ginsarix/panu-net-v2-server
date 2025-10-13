@@ -4,7 +4,7 @@ import fastifyCors from '@fastify/cors';
 import fastifyRedis from '@fastify/redis';
 import fastifySession from '@fastify/session';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import Fastify from 'fastify';
 import metrics from 'fastify-metrics';
 import RedisStore from 'fastify-session-redis-store';
@@ -12,38 +12,40 @@ import { readFileSync } from 'node:fs';
 import path, { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { env } from './config/env';
 import { queue } from './services/queue-system/queues';
 import { setRedis } from './services/redis';
 import { createContext } from './trpc/context';
 import { type AppRouter, appRouter } from './trpc/router/index';
 
-const env = process.env.NODE_ENV || 'development';
-
-if (env === 'development') {
-  dotenv.config({ path: `.env.development` });
-}
-
-const PORT = Number(process.env.PORT) || 3000;
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const sslConfig =
+  env.NODE_ENV === 'production'
+    ? {
+        key: Buffer.from(env.SSL_KEY!, 'base64').toString('utf-8'),
+        cert: Buffer.from(env.SSL_CERT!, 'base64').toString('utf-8'),
+      }
+    : {
+        key: readFileSync(path.join(__dirname, '../key.pem')),
+        cert: readFileSync(path.join(__dirname, '../cert.pem')),
+      };
+
 const fastify = Fastify({
+  logger: true,
+  https: sslConfig,
   http2: true,
-  https: {
-    key: readFileSync(path.join(__dirname, '../key.pem')),
-    cert: readFileSync(path.join(__dirname, '../cert.pem')),
-  },
 });
 
 await fastify.register(fastifyCors, {
-  origin: process.env.CORS_ORIGIN!,
+  origin: env.CORS_ORIGIN || 'https://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
 });
 
 fastify.register(fastifyRedis, {
-  password: process.env.REDIS_SECRET!,
+  password: env.REDIS_SECRET,
   host: 'localhost',
   port: 6379,
 });
@@ -66,9 +68,9 @@ fastify.addHook('onReady', async () => {
 await fastify.register(fastifyCookie);
 
 await fastify.register(fastifySession, {
-  secret: process.env.SESSION_SECRET!,
+  secret: env.SESSION_SECRET,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: env.NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 8,
     sameSite: 'lax',
@@ -100,7 +102,7 @@ await fastify.register(metrics, {
   endpoint: '/metrics',
 });
 
-fastify.listen({ port: PORT }, (err, address) => {
+fastify.listen({ port: env.PORT }, (err: Error | null, address: string) => {
   if (err) {
     fastify.log.error(err);
     process.exit(1);

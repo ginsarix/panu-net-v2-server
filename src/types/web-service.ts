@@ -92,6 +92,7 @@ export interface WsGetWaybillListResponse extends WsResponse {
     kdvtutari: string;
     indirimtutari: string;
     toplamtutar: string;
+    _cdate: string;
   }[];
 }
 
@@ -110,5 +111,38 @@ export interface WsGetInvoiceListResponse extends WsResponse {
     kdvtutari: string;
     indirimtutari: string;
     toplamtutar: string;
+    _cdate: string;
+  }[];
+}
+
+export interface WsGetCashAccountListResponse extends WsResponse {
+  result: {
+    ba: '(B)' | '(A)';
+    alacak: string;
+    borc: string;
+    bakiye: string;
+    _cdate: string;
+  }[];
+}
+
+export interface WsGetBankReceiptListResponse extends WsResponse {
+  result: {
+    fisno: string;
+    borc: string;
+    turuack: string;
+    aciklama: string;
+    _cdate: string;
+  }[];
+}
+
+export interface WsGetCashCollectionListResponse extends WsResponse {
+  result: {
+    cariunvan: string;
+    dovizturu: string;
+    toplamtutar: string;
+    bankahesapadi: string;
+    aciklama: string;
+    devirfisno: string;
+    _cdate: string;
   }[];
 }
