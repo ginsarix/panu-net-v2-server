@@ -12,16 +12,19 @@ import type {
   WsGetCashAccountListResponse,
   WsGetCashCollectionListResponse,
   WsGetInvoiceListResponse,
+  WsGetMaterialReceiptListResponse,
   WsGetWaybillListResponse,
 } from '../../types/web-service';
 import {
-  constructGetAccountCards,
   constructGetBankReceipts,
+  constructGetCashAccounts,
   constructGetCreditCardCollections,
   constructGetInvoices,
+  constructGetMaterialReceipts,
   constructGetWaybill,
   createdAtTodayFilters,
   dateRangeFilters,
+  getAccountCards,
   sourceWithBcs,
   sourceWithScf,
 } from '../../utils/web-service';
@@ -33,7 +36,9 @@ export const reportRouter = router({
       try {
         await login(ctx.req);
 
-        const [message, code, result] = await getCompanyById(ctx.req.session.selectedCompanyId!);
+        const [message, code, result] = await getCompanyById(
+          ctx.req.session.get('selectedCompanyId')!,
+        );
 
         if (!result) {
           throw new TRPCError({
@@ -46,12 +51,15 @@ export const reportRouter = router({
           ? createdAtTodayFilters()
           : dateRangeFilters(input.startDate, input.endDate);
 
+        const wsSessionId = ctx.req.session.get('wsSessionId');
+        const selectedPeriodCode = ctx.req.session.get('selectedPeriodCode');
+
         const waybillsResponsePromise = myAxios.post<WsGetWaybillListResponse>(
           sourceWithScf(result.webServiceSource),
           constructGetWaybill(
-            ctx.req.session.wsSessionId!,
+            wsSessionId!,
             result.code,
-            ctx.req.session.selectedPeriodCode,
+            selectedPeriodCode,
             {
               selectedcolumns: [
                 'aciklama',
@@ -78,15 +86,16 @@ export const reportRouter = router({
         const invoicesResponsePromise = myAxios.post<WsGetInvoiceListResponse>(
           sourceWithScf(result.webServiceSource),
           constructGetInvoices(
-            ctx.req.session.wsSessionId!,
+            wsSessionId!,
             result.code,
-            ctx.req.session.selectedPeriodCode,
+            selectedPeriodCode,
             {
               selectedcolumns: [
                 'kartaciklama',
                 'kartkodu',
                 'belgeno2',
                 'turuack',
+                'turu',
                 'fisno',
                 'miktar',
                 'fatbirimi',
@@ -105,10 +114,10 @@ export const reportRouter = router({
 
         const cashAccountsResponsePromise = myAxios.post<WsGetCashAccountListResponse>(
           sourceWithScf(result.webServiceSource),
-          constructGetAccountCards(
-            ctx.req.session.wsSessionId!,
+          constructGetCashAccounts(
+            wsSessionId!,
             result.code,
-            ctx.req.session.selectedPeriodCode,
+            selectedPeriodCode,
             {
               selectedcolumns: ['ba', 'alacak', 'borc', 'bakiye', '_cdate'],
             },
@@ -119,9 +128,9 @@ export const reportRouter = router({
         const bankReceiptsResponsePromise = myAxios.post<WsGetBankReceiptListResponse>(
           sourceWithBcs(result.webServiceSource),
           constructGetBankReceipts(
-            ctx.req.session.wsSessionId!,
+            wsSessionId!,
             result.code,
-            ctx.req.session.selectedPeriodCode,
+            selectedPeriodCode,
             {
               selectedcolumns: ['fisno', 'borc', 'turuack', 'aciklama', '_cdate'],
             },
@@ -132,9 +141,9 @@ export const reportRouter = router({
         const creditCardCollectionsResponsePromise = myAxios.post<WsGetCashCollectionListResponse>(
           sourceWithScf(result.webServiceSource),
           constructGetCreditCardCollections(
-            ctx.req.session.wsSessionId!,
+            wsSessionId!,
             result.code,
-            ctx.req.session.selectedPeriodCode,
+            selectedPeriodCode,
             {
               selectedcolumns: [
                 'cariunvan',
@@ -150,12 +159,51 @@ export const reportRouter = router({
           ),
         );
 
+        const accountCardsResponsePromise = getAccountCards(
+          sourceWithScf(result.webServiceSource),
+          wsSessionId!,
+          result.code,
+          selectedPeriodCode,
+          undefined,
+          {
+            selectedcolumns: ['bakiye', 'ba'],
+          },
+          filters,
+        );
+
+        const materialReceiptsResponsePromise = myAxios.post<WsGetMaterialReceiptListResponse>(
+          sourceWithScf(result.webServiceSource),
+          constructGetMaterialReceipts(
+            wsSessionId!,
+            result.code,
+            selectedPeriodCode,
+            {
+              selectedcolumns: [
+                'fisno',
+                'cariunvan',
+                'aciklama',
+                'turuack',
+                '_cdate',
+                'toplam',
+                'stokkodu',
+                'stokadi',
+                'doviz',
+                'birim',
+                'miktar',
+              ],
+            },
+            [...filters, { field: 'turu', operator: 'IN', value: '1,3,8,9' }],
+          ),
+        );
+
         const responses = await Promise.all([
           waybillsResponsePromise,
           invoicesResponsePromise,
           cashAccountsResponsePromise,
           bankReceiptsResponsePromise,
           creditCardCollectionsResponsePromise,
+          accountCardsResponsePromise,
+          materialReceiptsResponsePromise,
         ]);
 
         const [
@@ -164,6 +212,8 @@ export const reportRouter = router({
           cashAccountsResponse,
           bankReceiptsResponse,
           creditCardCollectionsResponse,
+          accountCardsResponse,
+          materialReceiptsResponse,
         ] = responses;
 
         console.info(
@@ -177,12 +227,30 @@ export const reportRouter = router({
           .map((ca) => Number(ca.bakiye))
           .reduce((acc, val) => acc + val, 0);
 
+        const accountCardsCreditorSum = accountCardsResponse.data.result
+          .map((ac) => (ac.ba === '(A)' ? Number(ac.bakiye) : 0))
+          .reduce((acc, val) => acc + val, 0);
+
+        const accountCardsDebtorSum = accountCardsResponse.data.result
+          .map((ac) => (ac.ba === '(B)' ? Number(ac.bakiye) : 0))
+          .reduce((acc, val) => acc + val, 0);
+
+        const purchasedServicesInvoicesSum = invoicesResponse.data.result
+          .filter((i) => i.turu === '4')
+          .map((i) => Number(i.toplamtutar))
+          .reduce((acc, val) => acc + val, 0);
+
         return {
           waybills: waybillsResponse.data,
           invoices: invoicesResponse.data,
           cashAccountsBalanceSum,
           bankReceipts: bankReceiptsResponse.data,
           creditCardCollections: creditCardCollectionsResponse.data,
+          accountCards: accountCardsResponse.data,
+          accountCardsCreditorSum,
+          accountCardsDebtorSum,
+          purchasedServicesInvoicesSum,
+          materialReceipts: materialReceiptsResponse.data,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;

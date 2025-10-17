@@ -5,6 +5,24 @@ export interface WsResponse {
 
 export type WsFilterOperators = '<' | '>' | '<=' | '>=' | '!' | '=' | 'IN' | 'NOT IN';
 export type WsFilter = { field: string; operator: WsFilterOperators; value: string };
+
+/**
+ * Codes of turu field
+ *
+ * Possible values:
+ * - 1: Mal Alım
+ * - 4: Alınan Hizmet
+ * - 6: Alım İade
+ * - 15: Müstahsil Makbuzu
+ * - 7: Perakende Satış İade
+ * - 8: Toptan Satış İade
+ * - 2: Perakende Satış
+ * - 3: Toptan Satış
+ * - 5: Verilen Hizmet
+ * - 9: Alınan Fiyat Farkı
+ * - 10: Verilen Fiyat Farkı
+ */
+export type WsInvoiceType = '1' | '4' | '6' | '15' | '7' | '8' | '2' | '3' | '5' | '9' | '10';
 export interface WsRequestGenerics {
   params?: Record<string, unknown>;
   filters?: WsFilter[];
@@ -101,6 +119,7 @@ export interface WsGetInvoiceListResponse extends WsResponse {
     kartaciklama: string;
     kartkodu: string;
     turuack: string;
+    turu: WsInvoiceType;
     belgeno2: string;
     kalemdovizi: string;
     fisno: string;
@@ -144,5 +163,21 @@ export interface WsGetCashCollectionListResponse extends WsResponse {
     aciklama: string;
     devirfisno: string;
     _cdate: string;
+  }[];
+}
+
+export interface WsGetMaterialReceiptListResponse extends WsResponse {
+  result: {
+    fisno: string;
+    cariunvan: string;
+    aciklama: string;
+    turuack: string;
+    _cdate: string;
+    toplam: string;
+    stokkodu: string;
+    stokadi: string;
+    doviz: string;
+    birim: string;
+    miktar: string;
   }[];
 }

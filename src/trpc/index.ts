@@ -1,4 +1,4 @@
-import type { FastifySessionObject } from '@fastify/session';
+import type { Session } from '@mgcrea/fastify-session';
 import { TRPCError, initTRPC } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import superjson from 'superjson';
@@ -13,11 +13,11 @@ const t = initTRPC.context<Context>().create({ transformer: superjson });
 export const router = t.router;
 export const publicProcedure = t.procedure.use(async function doesUserExist(opts) {
   const { ctx } = opts;
-  const login = ctx.req.session.login;
+  const login = ctx.req.session.get('login');
 
   if (login) {
     const user = await db.select().from(users).where(eq(users.id, +login.id));
-    if (!user) await ctx.req.session.destroy();
+    if (!user.length) await ctx.req.session.destroy();
   }
 
   return opts.next({
@@ -28,8 +28,8 @@ export const publicProcedure = t.procedure.use(async function doesUserExist(opts
   });
 });
 
-const loginCheck = async (session: FastifySessionObject) => {
-  const login = session.login;
+const loginCheck = async (session: Session) => {
+  const login = session.get('login');
 
   if (!login) {
     throw new TRPCError({ message: unauthorizedErrorMessage, code: 'UNAUTHORIZED' });

@@ -1,8 +1,8 @@
-import { type FastifyRedis } from '@fastify/redis';
+import type Redis from 'ioredis';
 
-let redisInstance: FastifyRedis | null = null;
+let redisInstance: Redis | null = null;
 
-export function setRedis(client: FastifyRedis) {
+export function setRedis(client: Redis) {
   redisInstance = client;
 }
 

@@ -8,7 +8,6 @@ function getRedis() {
     redis = new Redis({
       host: 'localhost',
       port: 6379,
-      password: process.env.REDIS_SECRET,
       maxRetriesPerRequest: null,
     });
   }

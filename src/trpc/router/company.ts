@@ -331,7 +331,9 @@ export const companyRouter = router({
             });
           }
         }
-        ctx.req.session.selectedCompanyId = input.id;
+
+        ctx.req.session.set('selectedCompanyId', input.id);
+        await ctx.req.session.save();
 
         return { message: 'Şirket başarıyla seçildi.' };
       } catch (error) {
@@ -346,7 +348,7 @@ export const companyRouter = router({
 
   getSelectedCompany: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const id = ctx.req.session.selectedCompanyId;
+      const id = ctx.req.session.get('selectedCompanyId');
 
       const notFoundError = new TRPCError({
         code: 'NOT_FOUND',
@@ -375,9 +377,11 @@ export const companyRouter = router({
 
   setPeriod: protectedProcedure
     .input(z.object({ periodCode: z.number().int().positive() }))
-    .mutation(({ input, ctx }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
-        ctx.req.session.selectedPeriodCode = input.periodCode;
+        ctx.req.session.set('selectedPeriodCode', input.periodCode);
+
+        await ctx.req.session.save();
 
         return { message: 'Dönem başarıyla seçildi.' };
       } catch (error) {
@@ -392,7 +396,7 @@ export const companyRouter = router({
 
   getSelectedPeriod: protectedProcedure.query(({ ctx }) => {
     try {
-      return { code: ctx.req.session.selectedPeriodCode };
+      return { code: ctx.req.session.get('selectedPeriodCode') };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
       console.error('An error occurred while getting company periods: ', error);

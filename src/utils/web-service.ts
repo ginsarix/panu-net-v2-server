@@ -3,7 +3,9 @@ import { addDays, format } from 'date-fns';
 
 import { bcsEndpoint, scfEndpoint, sisEndpoint } from '../constants/endpoints';
 import { badRequestMessage, notFoundMessage, serverErrorMessage } from '../constants/messages';
+import myAxios from '../services/api-base';
 import type {
+  WsAccountCardListResponse,
   WsFilter,
   WsGetAccountCardListRequest,
   WsGetCreditCountRequest,
@@ -127,6 +129,22 @@ export const constructGetCreditCardCollections = (
   },
 });
 
+export const constructGetMaterialReceipts = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_malzeme_fisi_listele_ayrintili: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const constructGetPeriods = (
   sessionId: string,
   companyCode: number,
@@ -214,4 +232,23 @@ export const createdAtTodayFilters = (): WsFilter[] => {
     { field: '_cdate', operator: '>=', value: format(today, 'yyyy-MM-dd') },
     { field: '_cdate', operator: '<', value: format(tomorrow, 'yyyy-MM-dd') },
   ];
+};
+
+export const getAccountCards = async (
+  webServiceSource: string,
+  sessionId: string,
+  companyCode: number,
+  periodCode?: number,
+  ba?: '(A)' | '(B)',
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => {
+  const filtersWithBa = ba
+    ? ([{ field: 'ba', operator: '=', value: ba }, ...(filters || [])] satisfies WsFilter[])
+    : filters;
+
+  return await myAxios.post<WsAccountCardListResponse>(
+    sourceWithScf(webServiceSource),
+    constructGetAccountCards(sessionId, companyCode, periodCode, params, filtersWithBa),
+  );
 };

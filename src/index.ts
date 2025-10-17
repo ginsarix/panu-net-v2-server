@@ -1,16 +1,14 @@
 import compress from '@fastify/compress';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
-import fastifyRedis from '@fastify/redis';
-import fastifySession from '@fastify/session';
+import fastifySession from '@mgcrea/fastify-session';
+import RedisStore from '@mgcrea/fastify-session-redis-store';
+import { SODIUM_AUTH } from '@mgcrea/fastify-session-sodium-crypto';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import 'dotenv/config';
 import Fastify from 'fastify';
 import metrics from 'fastify-metrics';
-import RedisStore from 'fastify-session-redis-store';
-import { readFileSync } from 'node:fs';
-import path, { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import Redis from 'ioredis';
 
 import { env } from './config/env';
 import { queue } from './services/queue-system/queues';
@@ -18,40 +16,18 @@ import { setRedis } from './services/redis';
 import { createContext } from './trpc/context';
 import { type AppRouter, appRouter } from './trpc/router/index';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const sslConfig =
-  env.NODE_ENV === 'production'
-    ? {
-        key: Buffer.from(env.SSL_KEY!, 'base64').toString('utf-8'),
-        cert: Buffer.from(env.SSL_CERT!, 'base64').toString('utf-8'),
-      }
-    : {
-        key: readFileSync(path.join(__dirname, '../key.pem')),
-        cert: readFileSync(path.join(__dirname, '../cert.pem')),
-      };
-
-const fastify = Fastify({
-  logger: true,
-  https: sslConfig,
-  http2: true,
-});
+const fastify = Fastify();
 
 await fastify.register(fastifyCors, {
-  origin: env.CORS_ORIGIN || 'https://localhost:5173',
+  origin: env.CORS_ORIGIN || 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
 });
 
-fastify.register(fastifyRedis, {
-  password: env.REDIS_SECRET,
-  host: 'localhost',
-  port: 6379,
-});
+const redis = new Redis(env.REDIS_URI || 'redis://127.0.0.1:6379');
 
 fastify.addHook('onReady', async () => {
-  setRedis(fastify.redis);
+  setRedis(redis);
   await queue.add(
     'sendSubscriptionExpiryEmails',
     {},
@@ -68,19 +44,19 @@ fastify.addHook('onReady', async () => {
 await fastify.register(fastifyCookie);
 
 await fastify.register(fastifySession, {
-  secret: env.SESSION_SECRET,
+  key: Buffer.from(env.SESSION_KEY, 'base64'),
+  crypto: SODIUM_AUTH,
+  store: new RedisStore({
+    client: redis,
+    ttl: 86400,
+  }),
   cookie: {
     secure: env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 8,
+    maxAge: 86400,
     sameSite: 'lax',
     domain: undefined,
   },
-  saveUninitialized: false,
-  store: new RedisStore({
-    client: fastify.redis,
-    prefix: 'myapp:',
-  }),
 });
 
 fastify.register(fastifyTRPCPlugin, {

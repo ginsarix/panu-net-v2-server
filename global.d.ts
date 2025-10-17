@@ -1,7 +1,7 @@
 import 'fastify';
 
-declare module 'fastify' {
-  interface Session {
+declare module '@mgcrea/fastify-session' {
+  interface SessionData {
     login?: {
       id: string;
       name: string;

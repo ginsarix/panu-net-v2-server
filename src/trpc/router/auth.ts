@@ -1,7 +1,7 @@
-import type { FastifyRedis } from '@fastify/redis';
 import { TRPCError } from '@trpc/server';
 import * as bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
+import type Redis from 'ioredis';
 import { customAlphabet } from 'nanoid';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
@@ -43,7 +43,7 @@ const sendOtpEmail = async (to: string, code: string) =>
     html: `<h3>${code}</h3> <br> <p>E-posta doğrulama kodunuz yukarıda yazmaktadır, eğer bunu siz istemediyseniz yönetici ile iletişime geçin</p>`,
   });
 
-const checkOtpAttempts = async (redis: FastifyRedis, key: string) => {
+const checkOtpAttempts = async (redis: Redis, key: string) => {
   const MAX_ATTEMPTS = 5;
   const attempts = Number((await redis.get(key)) || '0');
   if (attempts >= MAX_ATTEMPTS) {
@@ -84,13 +84,13 @@ export const authRouter = router({
 
       if (!needsOtp) {
         await db.update(users).set({ lastLoginAt: now }).where(eq(users.id, user.id));
-        await ctx.req.session.regenerate();
-        ctx.req.session.login = {
+        ctx.req.session.set('login', {
           id: String(user.id),
           name: user.name,
           email: input.email.trim().toLowerCase(),
           role: user.role as 'user' | 'admin',
-        };
+        });
+        await ctx.req.session.save();
         return { success: true };
       }
 
@@ -144,13 +144,13 @@ export const authRouter = router({
 
         const twoFaContext = JSON.parse(redisValue) as Redis2FAContext;
         if (twoFaContext.verificationCode === input.verificationCode.trim()) {
-          await ctx.req.session.regenerate();
-          ctx.req.session.login = {
+          ctx.req.session.set('login', {
             id: String(twoFaContext.id),
             name: twoFaContext.name,
             email: twoFaContext.email,
             role: twoFaContext.role,
-          };
+          });
+          await ctx.req.session.save();
 
           await db
             .update(users)
@@ -287,7 +287,7 @@ export const authRouter = router({
   }),
   getLogin: publicProcedure.query(({ ctx }) => {
     try {
-      return ctx.req.session.login;
+      return ctx.req.session.get('login');
     } catch (error) {
       if (error instanceof TRPCError) throw error;
 

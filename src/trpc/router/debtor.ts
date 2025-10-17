@@ -1,11 +1,9 @@
 import { TRPCError } from '@trpc/server';
 
 import { unexpectedErrorMessage } from '../../constants/messages';
-import myAxios from '../../services/api-base';
 import { getCompanyById } from '../../services/companiesDb';
 import { login } from '../../services/web-service/sis';
-import type { WsAccountCardListResponse } from '../../types/web-service';
-import { constructGetAccountCards, handleErrorCodes, sourceWithScf } from '../../utils/web-service';
+import { getAccountCards, handleErrorCodes, sourceWithScf } from '../../utils/web-service';
 import { protectedProcedure, router } from '../index';
 
 export const debtorRouter = router({
@@ -13,7 +11,9 @@ export const debtorRouter = router({
     try {
       await login(ctx.req);
 
-      const [message, code, result] = await getCompanyById(ctx.req.session.selectedCompanyId!);
+      const [message, code, result] = await getCompanyById(
+        ctx.req.session.get('selectedCompanyId')!,
+      );
 
       if (!result) {
         throw new TRPCError({
@@ -22,22 +22,20 @@ export const debtorRouter = router({
         });
       }
 
-      const scfResponse = await myAxios.post<WsAccountCardListResponse>(
+      const debtors = await getAccountCards(
         sourceWithScf(result.webServiceSource),
-        constructGetAccountCards(
-          ctx.req.session.wsSessionId!,
-          result.code,
-          ctx.req.session.selectedPeriodCode,
-          {
-            selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
-          },
-          [{ field: 'ba', operator: '=', value: '(B)' }],
-        ),
+        ctx.req.session.get('wsSessionId')!,
+        result.code,
+        ctx.req.session.get('selectedPeriodCode'),
+        '(B)',
+        {
+          selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
+        },
       );
 
-      const responseMsg = scfResponse.data.msg;
+      const responseMsg = debtors.data.msg;
 
-      handleErrorCodes(scfResponse.data.code, {
+      handleErrorCodes(debtors.data.code, {
         notFound: responseMsg,
         badRequest: responseMsg,
         internalServerError: responseMsg,
@@ -45,7 +43,7 @@ export const debtorRouter = router({
 
       return {
         message: responseMsg,
-        payload: scfResponse.data,
+        payload: debtors.data,
       };
     } catch (error) {
       if (error instanceof TRPCError) throw error;

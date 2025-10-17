@@ -9,3 +9,4 @@ dist/
 *.crt
 
 wwwroot/
+.DS_Store

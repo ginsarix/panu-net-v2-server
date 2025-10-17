@@ -25,14 +25,15 @@ import { getCompanyById } from '../companiesDb';
 type LoginResult = 'successfully_logged_in' | 'already_logged_in' | 'api_error';
 
 export const login = async (request: FastifyRequest): Promise<LoginResult> => {
-  if (!request.session.selectedCompanyId) {
+  const selectedCompanyId = request.session.get('selectedCompanyId');
+  if (!selectedCompanyId) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: selectedCompanyNotFoundMessage,
     });
   }
 
-  const [message, code, result] = await getCompanyById(request.session.selectedCompanyId);
+  const [message, code, result] = await getCompanyById(selectedCompanyId);
   if (!result) {
     throw new TRPCError({
       code: code || 'INTERNAL_SERVER_ERROR',
@@ -40,10 +41,11 @@ export const login = async (request: FastifyRequest): Promise<LoginResult> => {
     });
   }
 
-  if (request.session.wsSessionId) {
+  const wsSessionId = request.session.get('wsSessionId');
+  if (wsSessionId) {
     const pingResponse = await myAxios.post<Omit<WsResponse, 'msg'>>(
       sourceWithSis(result.webServiceSource),
-      constructPing(request.session.wsSessionId),
+      constructPing(wsSessionId),
     );
 
     if (pingResponse.data.code === '200') return 'already_logged_in';
@@ -55,7 +57,8 @@ export const login = async (request: FastifyRequest): Promise<LoginResult> => {
   );
 
   if (response.data.code === '200') {
-    request.session.wsSessionId = response.data.msg;
+    request.session.set('wsSessionId', response.data.msg);
+    await request.session.save();
     return 'successfully_logged_in';
   } else {
     console.error(response);
@@ -64,14 +67,15 @@ export const login = async (request: FastifyRequest): Promise<LoginResult> => {
 };
 
 export const getPeriods = async (request: FastifyRequest, companyCode: number) => {
-  if (!request.session.wsSessionId) {
+  const wsSessionId = request.session.get('wsSessionId');
+  if (!wsSessionId) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: unauthorizedErrorMessage,
     });
   }
 
-  const selectedCompanyId = request.session.selectedCompanyId;
+  const selectedCompanyId = request.session.get('selectedCompanyId');
 
   if (!selectedCompanyId) {
     throw new TRPCError({
@@ -90,7 +94,7 @@ export const getPeriods = async (request: FastifyRequest, companyCode: number) =
 
   const response = await myAxios.post<WsGetPeriodsResponse>(
     sourceWithSis(result.webServiceSource),
-    constructGetPeriods(request.session.wsSessionId, companyCode, {
+    constructGetPeriods(wsSessionId, companyCode, {
       selectedcolumns: ['m_donemler'],
     }),
   );
@@ -99,14 +103,15 @@ export const getPeriods = async (request: FastifyRequest, companyCode: number) =
 };
 
 export const getWsCreditCount = async (request: FastifyRequest) => {
-  if (!request.session.wsSessionId) {
+  const wsSessionId = request.session.get('wsSessionId');
+  if (!wsSessionId) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: unauthorizedErrorMessage,
     });
   }
 
-  const selectedCompanyId = request.session.selectedCompanyId;
+  const selectedCompanyId = request.session.get('selectedCompanyId');
 
   if (!selectedCompanyId) {
     throw new TRPCError({
@@ -125,7 +130,7 @@ export const getWsCreditCount = async (request: FastifyRequest) => {
 
   const response = await myAxios.post<WsGetCreditCountResponse>(
     sourceWithSis(result.webServiceSource),
-    constructGetCreditCount(request.session.wsSessionId),
+    constructGetCreditCount(wsSessionId),
   );
 
   return response.data;
