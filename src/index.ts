@@ -3,18 +3,16 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifySession from '@mgcrea/fastify-session';
 import RedisStore from '@mgcrea/fastify-session-redis-store';
-import { SODIUM_AUTH } from '@mgcrea/fastify-session-sodium-crypto';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import 'dotenv/config';
 import Fastify from 'fastify';
-import metrics from 'fastify-metrics';
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 
-import { env } from './config/env';
-import { queue } from './services/queue-system/queues';
-import { setRedis } from './services/redis';
-import { createContext } from './trpc/context';
-import { type AppRouter, appRouter } from './trpc/router/index';
+import { env } from './config/env.js';
+import { queue } from './services/queue-system/queues.js';
+import { setRedis } from './services/redis.js';
+import { createContext } from './trpc/context.js';
+import { type AppRouter, appRouter } from './trpc/router/index.js';
 
 const fastify = Fastify();
 
@@ -45,7 +43,6 @@ await fastify.register(fastifyCookie);
 
 await fastify.register(fastifySession, {
   key: Buffer.from(env.SESSION_KEY, 'base64'),
-  crypto: SODIUM_AUTH,
   store: new RedisStore({
     client: redis,
     ttl: 86400,
@@ -74,18 +71,13 @@ await fastify.register(compress, {
   global: true,
   encodings: ['gzip'],
 });
-await fastify.register(metrics, {
-  endpoint: '/metrics',
-});
 
 fastify.listen({ port: env.PORT }, (err: Error | null, address: string) => {
   if (err) {
     fastify.log.error(err);
     process.exit(1);
   }
-  console.log(`API server is running on ${address}
-Metrics on ${address}/metrics
-  `);
+  console.log(`API server is running on ${address}`);
 });
 
 process.on('SIGTERM', () => {

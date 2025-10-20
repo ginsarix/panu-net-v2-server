@@ -34,7 +34,7 @@ export interface WsLoginRequest {
   login: {
     username: string;
     password: string;
-    disconnect_same_user: 'True' | 'False';
+    disconnect_same_user: 'true' | 'false';
   } & WsRequestGenerics;
 }
 

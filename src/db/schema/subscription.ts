@@ -1,6 +1,6 @@
 import { date, integer, pgEnum, pgTable, serial, timestamp } from 'drizzle-orm/pg-core';
 
-import { subscriptionCustomers } from './subscription-customer';
+import { subscriptionCustomers } from './subscription-customer.js';
 
 export const subscriptionTypeEnum = pgEnum('subscription_type', [
   'domain',

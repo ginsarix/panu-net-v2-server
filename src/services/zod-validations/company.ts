@@ -4,8 +4,8 @@ import {
   nameRequiredMessage,
   requiredFieldMessage,
   updateAtleast1FieldMessage,
-} from '../../constants/messages';
-import { dateValidation } from './shared';
+} from '../../constants/messages.js';
+import { dateValidation } from './shared.js';
 
 export const CreateCompanySchema = z.object({
   name: z.string().min(1, nameRequiredMessage),

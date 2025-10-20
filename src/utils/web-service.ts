@@ -1,9 +1,9 @@
 import { TRPCError } from '@trpc/server';
 import { addDays, format } from 'date-fns';
 
-import { bcsEndpoint, scfEndpoint, sisEndpoint } from '../constants/endpoints';
-import { badRequestMessage, notFoundMessage, serverErrorMessage } from '../constants/messages';
-import myAxios from '../services/api-base';
+import { bcsEndpoint, scfEndpoint, sisEndpoint } from '../constants/endpoints.js';
+import { badRequestMessage, notFoundMessage, serverErrorMessage } from '../constants/messages.js';
+import myAxios from '../services/api-base.js';
 import type {
   WsAccountCardListResponse,
   WsFilter,
@@ -12,15 +12,15 @@ import type {
   WsGetInvoicesRequest,
   WsGetPeriodsRequest,
   WsLoginRequest,
-} from '../types/web-service';
-import { parseIntBase10 } from './parsing';
+} from '../types/web-service.js';
+import { parseIntBase10 } from './parsing.js';
 
 export const constructLogin = (
   username: string,
   password: string,
   params?: Record<string, unknown>,
   filters?: WsFilter[],
-  disconnect_same_user: 'True' | 'False' = 'False',
+  disconnect_same_user: 'true' | 'false' = 'true',
 ): WsLoginRequest => ({
   login: {
     username,

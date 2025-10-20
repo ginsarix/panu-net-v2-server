@@ -11,6 +11,8 @@ const envSchema = z.object({
   DB_USER: z.string().min(1),
   DB_PASS: z.string().min(1),
   DB_NAME: z.string().min(1),
+  SMTP_USER: z.string().email(),
+  SMTP_PASS: z.string().min(1),
   // for production only
   SSL_KEY: z.string().optional(),
   SSL_CERT: z.string().optional(),

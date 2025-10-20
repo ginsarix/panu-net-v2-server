@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { updateAtleast1FieldMessage } from '../../constants/messages';
+import { updateAtleast1FieldMessage } from '../../constants/messages.js';
 
 const isoDateOnly = z
   .string()

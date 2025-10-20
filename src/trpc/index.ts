@@ -3,10 +3,10 @@ import { TRPCError, initTRPC } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import superjson from 'superjson';
 
-import { unauthorizedErrorMessage } from '../constants/messages';
-import { db } from '../db/index';
-import { users } from '../db/schema/user';
-import type { Context } from './context';
+import { unauthorizedErrorMessage } from '../constants/messages.js';
+import { db } from '../db/index.js';
+import { users } from '../db/schema/user.js';
+import type { Context } from './context.js';
 
 const t = initTRPC.context<Context>().create({ transformer: superjson });
 

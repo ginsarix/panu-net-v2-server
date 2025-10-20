@@ -8,15 +8,18 @@ import {
   noCompanyAccessMessage,
   unauthorizedErrorMessage,
   unexpectedErrorMessage,
-} from '../../constants/messages';
-import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination';
-import { db } from '../../db/index';
-import { companies } from '../../db/schema/company';
-import { usersToCompanies } from '../../db/schema/user-company';
-import { getCompanyById } from '../../services/companiesDb';
-import { getPeriods, getWsCreditCount, login } from '../../services/web-service/sis';
-import { CreateCompanySchema, UpdateCompanySchema } from '../../services/zod-validations/company';
-import { authorizedProcedure, protectedProcedure, router } from '../index';
+} from '../../constants/messages.js';
+import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
+import { db } from '../../db/index.js';
+import { companies } from '../../db/schema/company.js';
+import { usersToCompanies } from '../../db/schema/user-company.js';
+import { getCompanyById } from '../../services/companiesDb.js';
+import { getPeriods, getWsCreditCount, login } from '../../services/web-service/sis.js';
+import {
+  CreateCompanySchema,
+  UpdateCompanySchema,
+} from '../../services/zod-validations/company.js';
+import { authorizedProcedure, protectedProcedure, router } from '../index.js';
 
 export const companyRouter = router({
   getCompanies: protectedProcedure

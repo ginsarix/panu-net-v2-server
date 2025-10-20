@@ -1,10 +1,10 @@
 import { TRPCError } from '@trpc/server';
 
-import { unexpectedErrorMessage } from '../../constants/messages';
-import { getCompanyById } from '../../services/companiesDb';
-import { login } from '../../services/web-service/sis';
-import { getAccountCards, handleErrorCodes, sourceWithScf } from '../../utils/web-service';
-import { protectedProcedure, router } from '../index';
+import { unexpectedErrorMessage } from '../../constants/messages.js';
+import { getCompanyById } from '../../services/companiesDb.js';
+import { login } from '../../services/web-service/sis.js';
+import { getAccountCards, handleErrorCodes, sourceWithScf } from '../../utils/web-service.js';
+import { protectedProcedure, router } from '../index.js';
 
 export const creditorRouter = router({
   getCreditors: protectedProcedure.query(async ({ ctx }) => {

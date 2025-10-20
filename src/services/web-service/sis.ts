@@ -5,22 +5,22 @@ import {
   selectedCompanyNotFoundMessage,
   unauthorizedErrorMessage,
   unexpectedErrorMessage,
-} from '../../constants/messages';
-import myAxios from '../../services/api-base';
+} from '../../constants/messages.js';
+import myAxios from '../../services/api-base.js';
 import type {
   WsGetCreditCountResponse,
   WsGetPeriodsResponse,
   WsLoginResponse,
   WsResponse,
-} from '../../types/web-service';
+} from '../../types/web-service.js';
 import {
   constructGetCreditCount,
   constructGetPeriods,
   constructLogin,
   constructPing,
   sourceWithSis,
-} from '../../utils/web-service';
-import { getCompanyById } from '../companiesDb';
+} from '../../utils/web-service.js';
+import { getCompanyById } from '../companiesDb.js';
 
 type LoginResult = 'successfully_logged_in' | 'already_logged_in' | 'api_error';
 

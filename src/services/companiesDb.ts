@@ -1,10 +1,10 @@
 import { eq } from 'drizzle-orm';
 
-import { companyNotFoundMessage, idInvalidMessage } from '../constants/messages';
-import { db } from '../db/index';
-import { companies } from '../db/schema/company';
-import type { Result } from '../types/result';
-import { parseIntBase10 } from '../utils/parsing';
+import { companyNotFoundMessage, idInvalidMessage } from '../constants/messages.js';
+import { db } from '../db/index.js';
+import { companies } from '../db/schema/company.js';
+import type { Result } from '../types/result.js';
+import { parseIntBase10 } from '../utils/parsing.js';
 
 type CompanyType = typeof companies.$inferSelect;
 

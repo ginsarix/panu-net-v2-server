@@ -2,13 +2,13 @@ import { Worker } from 'bullmq';
 import { addDays, differenceInCalendarDays, parseISO } from 'date-fns';
 import { and, eq, or } from 'drizzle-orm';
 
-import { db } from '../../../db/index';
-import { subscriptions } from '../../../db/schema/subscription';
-import { subscriptionCustomers } from '../../../db/schema/subscription-customer';
-import { sendEmail } from '../../../utils/send-email';
-import { netgsm } from '../../netgsm';
-import { connection } from '../connection';
-import { queueName } from '../queues';
+import { db } from '../../../db/index.js';
+import { subscriptionCustomers } from '../../../db/schema/subscription-customer.js';
+import { subscriptions } from '../../../db/schema/subscription.js';
+import { sendEmail } from '../../../utils/send-email.js';
+import { netgsm } from '../../netgsm.js';
+import { connection } from '../connection.js';
+import { queueName } from '../queues.js';
 
 const worker = new Worker(
   queueName,

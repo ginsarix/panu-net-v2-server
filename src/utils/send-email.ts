@@ -1,4 +1,7 @@
 import nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
+
+import { env } from '../config/env.js';
 
 export interface SendEmailOptions {
   to: string;
@@ -7,26 +10,33 @@ export interface SendEmailOptions {
   html?: string;
 }
 
+const isProd = env.NODE_ENV === 'production';
+
+const mailNetworkOptions: SMTPTransport.Options = isProd
+  ? { host: 'v2.panunet.com.tr', port: 465, secure: true }
+  : { service: 'gmail' };
+
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  ...mailNetworkOptions,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASS,
   },
 });
 
 export async function sendEmail({ to, subject, text, html }: SendEmailOptions): Promise<void> {
   try {
     await transporter.sendMail({
-      from: `"PanuNet V2" <${process.env.SMTP_USER}>`,
+      from: `"PanuNet V2" <${env.SMTP_USER}>`,
       to,
       subject,
       text,
       html,
     });
+
     console.log(`Email sent to ${to}`);
   } catch (error) {
     console.error('Failed to send email:', error);
-    throw new Error('Failed to send email');
+    throw new Error(`Failed to send email: ${error as Error}`);
   }
 }

@@ -4,7 +4,7 @@ import {
   emailInvalidMessage,
   phoneInvalidMessage,
   updateAtleast1FieldMessage,
-} from '../../constants/messages';
+} from '../../constants/messages.js';
 
 export const CreateSubscriptionCustomerSchema = z.object({
   customerCode: z.number().int().positive().nullish(),

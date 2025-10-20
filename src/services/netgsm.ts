@@ -1,4 +1,4 @@
-import Netgsm from '@netgsm/sms';
+import { Netgsm } from '@netgsm/sms';
 
 export const netgsm = new Netgsm({
   username: process.env.NETGSM_USERNAME!,

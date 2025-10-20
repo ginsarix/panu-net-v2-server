@@ -2,11 +2,10 @@ import { TRPCError } from '@trpc/server';
 import chalk from 'chalk';
 import { z } from 'zod';
 
-import { protectedProcedure, router } from '..';
-import { unexpectedErrorMessage } from '../../constants/messages';
-import myAxios from '../../services/api-base';
-import { getCompanyById } from '../../services/companiesDb';
-import { login } from '../../services/web-service/sis';
+import { unexpectedErrorMessage } from '../../constants/messages.js';
+import myAxios from '../../services/api-base.js';
+import { getCompanyById } from '../../services/companiesDb.js';
+import { login } from '../../services/web-service/sis.js';
 import type {
   WsGetBankReceiptListResponse,
   WsGetCashAccountListResponse,
@@ -14,7 +13,7 @@ import type {
   WsGetInvoiceListResponse,
   WsGetMaterialReceiptListResponse,
   WsGetWaybillListResponse,
-} from '../../types/web-service';
+} from '../../types/web-service.js';
 import {
   constructGetBankReceipts,
   constructGetCashAccounts,
@@ -27,7 +26,8 @@ import {
   getAccountCards,
   sourceWithBcs,
   sourceWithScf,
-} from '../../utils/web-service';
+} from '../../utils/web-service.js';
+import { protectedProcedure, router } from '../index.js';
 
 export const reportRouter = router({
   getGeneralReport: protectedProcedure
