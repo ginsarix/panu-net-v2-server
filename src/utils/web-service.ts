@@ -145,6 +145,22 @@ export const constructGetMaterialReceipts = (
   },
 });
 
+export const constructGetCheckEntries = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  bcs_ceksenet_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const constructGetPeriods = (
   sessionId: string,
   companyCode: number,

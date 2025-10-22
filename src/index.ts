@@ -22,7 +22,7 @@ await fastify.register(fastifyCors, {
   credentials: true,
 });
 
-const redis = new Redis(env.REDIS_URI || 'redis://127.0.0.1:6379');
+const redis = new Redis(env.REDIS_URI);
 
 fastify.addHook('onReady', async () => {
   setRedis(redis);

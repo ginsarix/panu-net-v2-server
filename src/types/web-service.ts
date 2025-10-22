@@ -181,3 +181,17 @@ export interface WsGetMaterialReceiptListResponse extends WsResponse {
     miktar: string;
   }[];
 }
+
+export interface WsGetCheckEntriesListResponse extends WsResponse {
+  result: {
+    bordrono: string;
+    tutar: string;
+    doviz: string;
+    vade: string;
+    cirolu: 'E' | 'H';
+    aciklama: string;
+    bankadi: string;
+    borclu: string;
+    _cdate: string;
+  }[];
+}

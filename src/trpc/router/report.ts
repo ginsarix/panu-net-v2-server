@@ -7,9 +7,11 @@ import myAxios from '../../services/api-base.js';
 import { getCompanyById } from '../../services/companiesDb.js';
 import { login } from '../../services/web-service/sis.js';
 import type {
+  WsFilter,
   WsGetBankReceiptListResponse,
   WsGetCashAccountListResponse,
   WsGetCashCollectionListResponse,
+  WsGetCheckEntriesListResponse,
   WsGetInvoiceListResponse,
   WsGetMaterialReceiptListResponse,
   WsGetWaybillListResponse,
@@ -17,6 +19,7 @@ import type {
 import {
   constructGetBankReceipts,
   constructGetCashAccounts,
+  constructGetCheckEntries,
   constructGetCreditCardCollections,
   constructGetInvoices,
   constructGetMaterialReceipts,
@@ -50,6 +53,8 @@ export const reportRouter = router({
         const filters = !(input.startDate && input.endDate)
           ? createdAtTodayFilters()
           : dateRangeFilters(input.startDate, input.endDate);
+
+        const isActiveFilter = { field: 'durum', operator: '=', value: 'A' } as WsFilter;
 
         const wsSessionId = ctx.req.session.get('wsSessionId');
         const selectedPeriodCode = ctx.req.session.get('selectedPeriodCode');
@@ -121,7 +126,7 @@ export const reportRouter = router({
             {
               selectedcolumns: ['ba', 'alacak', 'borc', 'bakiye', '_cdate'],
             },
-            filters,
+            [...filters, isActiveFilter],
           ),
         );
 
@@ -168,7 +173,7 @@ export const reportRouter = router({
           {
             selectedcolumns: ['bakiye', 'ba'],
           },
-          filters,
+          [isActiveFilter],
         );
 
         const materialReceiptsResponsePromise = myAxios.post<WsGetMaterialReceiptListResponse>(
@@ -196,6 +201,29 @@ export const reportRouter = router({
           ),
         );
 
+        const checkEntriesResponsePromise = myAxios.post<WsGetCheckEntriesListResponse>(
+          sourceWithBcs(result.webServiceSource),
+          constructGetCheckEntries(
+            wsSessionId!,
+            result.code,
+            selectedPeriodCode,
+            {
+              selectedcolumns: [
+                'tutar',
+                'doviz',
+                'vade',
+                'bordrono',
+                'cirolu',
+                'aciklama',
+                'bankaadi',
+                'borclu',
+                '_cdate',
+              ],
+            },
+            [...filters, { field: 'turu', operator: '=', value: 'CEK_MST' }],
+          ),
+        );
+
         const responses = await Promise.all([
           waybillsResponsePromise,
           invoicesResponsePromise,
@@ -204,6 +232,7 @@ export const reportRouter = router({
           creditCardCollectionsResponsePromise,
           accountCardsResponsePromise,
           materialReceiptsResponsePromise,
+          checkEntriesResponsePromise,
         ]);
 
         const [
@@ -214,6 +243,7 @@ export const reportRouter = router({
           creditCardCollectionsResponse,
           accountCardsResponse,
           materialReceiptsResponse,
+          checkEntriesResponse,
         ] = responses;
 
         console.info(
@@ -251,6 +281,7 @@ export const reportRouter = router({
           accountCardsDebtorSum,
           purchasedServicesInvoicesSum,
           materialReceipts: materialReceiptsResponse.data,
+          checkEntries: checkEntriesResponse.data,
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
