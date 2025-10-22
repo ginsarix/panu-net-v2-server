@@ -1,4 +1,4 @@
-import { type ConnectionOptions } from 'bullmq';
+import type { ConnectionOptions } from 'bullmq';
 import { Redis } from 'ioredis';
 
 import { env } from '../../config/env.js';

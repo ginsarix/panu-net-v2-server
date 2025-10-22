@@ -72,13 +72,16 @@ await fastify.register(compress, {
   encodings: ['gzip'],
 });
 
-fastify.listen({ port: env.PORT }, (err: Error | null, address: string) => {
-  if (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
-  console.log(`API server is running on ${address}`);
-});
+fastify.listen(
+  { port: env.PORT, ...(env.NODE_ENV === 'production' && { host: '0.0.0.0' }) },
+  (err: Error | null, address: string) => {
+    if (err) {
+      fastify.log.error(err);
+      process.exit(1);
+    }
+    console.log(`API server is running on ${address}`);
+  },
+);
 
 process.on('SIGTERM', () => {
   process.exit(0);
