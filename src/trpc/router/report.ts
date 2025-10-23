@@ -54,7 +54,7 @@ export const reportRouter = router({
           ? createdAtTodayFilters()
           : dateRangeFilters(input.startDate, input.endDate);
 
-        const isActiveFilter = { field: 'durum', operator: '=', value: 'A' } as WsFilter;
+        const isActiveFilter: WsFilter = { field: 'durum', operator: '=', value: 'A' };
 
         const wsSessionId = ctx.req.session.get('wsSessionId');
         const selectedPeriodCode = ctx.req.session.get('selectedPeriodCode');
@@ -126,7 +126,7 @@ export const reportRouter = router({
             {
               selectedcolumns: ['ba', 'alacak', 'borc', 'bakiye', '_cdate'],
             },
-            [...filters, isActiveFilter],
+            [isActiveFilter],
           ),
         );
 
