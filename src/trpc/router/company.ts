@@ -377,7 +377,7 @@ export const companyRouter = router({
   }),
 
   setPeriod: protectedProcedure
-    .input(z.object({ periodCode: z.number().int().positive() }))
+    .input(z.object({ periodCode: z.number().int().nonnegative() }))
     .mutation(async ({ input, ctx }) => {
       try {
         ctx.req.session.set('selectedPeriodCode', input.periodCode);
