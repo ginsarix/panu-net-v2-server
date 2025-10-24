@@ -60,7 +60,7 @@ export const authorizedProcedure = t.procedure.use(async function isAuthorized(o
 
   if (login.role !== 'admin') {
     throw new TRPCError({
-      code: 'UNAUTHORIZED',
+      code: 'FORBIDDEN',
       message: unauthorizedErrorMessage,
     });
   }

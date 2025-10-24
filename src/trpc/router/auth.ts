@@ -61,7 +61,7 @@ export const authRouter = router({
 
       if (!user) {
         // prevent timing attacks
-        await bcrypt.hash('dummy', 10);
+        await bcrypt.hash('dummy', saltRounds);
         throw new TRPCError({
           code: 'UNAUTHORIZED',
           message: 'E-posta veya parola yanlış.',
@@ -107,11 +107,8 @@ export const authRouter = router({
       };
       await redis.set(redisKey, JSON.stringify(redisValue), 'EX', OTP_TTL);
 
-      // mmmm...
-      setImmediate(() => {
-        sendOtpEmail(input.email, verificationCode).catch((err) => {
-          console.error('Failed to send OTP email:', err);
-        });
+      sendOtpEmail(input.email, verificationCode).catch((err) => {
+        console.error('Failed to send OTP email:', err);
       });
 
       return { otpIdentifier, ttl: OTP_TTL };

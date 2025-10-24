@@ -90,13 +90,11 @@ export const companyRouter = router({
             .innerJoin(usersToCompanies, eq(companies.id, usersToCompanies.companyId))
             .where(whereClause);
 
-          const totalCountQuery = db.$count(
-            db
-              .select({ companies })
-              .from(companies)
-              .innerJoin(usersToCompanies, eq(companies.id, usersToCompanies.companyId)),
-            !isAdmin ? currentUserFilter : undefined,
-          );
+          const totalCountQuery = db
+            .select({ count: sql<number>`count(*)` })
+            .from(companies)
+            .innerJoin(usersToCompanies, eq(companies.id, usersToCompanies.companyId))
+            .where(whereClause);
 
           const [fetchedCompanies, totalCount] = await Promise.all([
             query.orderBy(sortFn(sortColumn)).offset(skip).limit(itemsPerPage),
@@ -105,7 +103,7 @@ export const companyRouter = router({
 
           return {
             companies: fetchedCompanies.map((c) => c.companies),
-            total: totalCount,
+            total: totalCount[0]?.count || 0,
           };
         }
       } catch (error) {

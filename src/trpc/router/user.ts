@@ -70,7 +70,33 @@ export const userRouter = router({
           db.$count(users),
         ]);
 
-        const result = fetchedUsers.map(stripSensitive);
+        const userIds = fetchedUsers.map((user) => user.id);
+        const userCompanies =
+          userIds.length > 0
+            ? await db
+                .select({
+                  userId: usersToCompanies.userId,
+                  companyId: usersToCompanies.companyId,
+                })
+                .from(usersToCompanies)
+                .where(inArray(usersToCompanies.userId, userIds))
+            : [];
+
+        const companyIdsByUser = userCompanies.reduce(
+          (acc, { userId, companyId }) => {
+            if (!acc[userId]) {
+              acc[userId] = [];
+            }
+            acc[userId].push(companyId);
+            return acc;
+          },
+          {} as Record<number, number[]>,
+        );
+
+        const result = fetchedUsers.map((user) => ({
+          ...stripSensitive(user),
+          companyIds: companyIdsByUser[user.id] || [],
+        }));
 
         return {
           users: result,
@@ -185,6 +211,19 @@ export const userRouter = router({
             code: 'NOT_FOUND',
             message: userNotFoundMessage,
           });
+        }
+
+        if (input.data.companies !== undefined) {
+          await db.delete(usersToCompanies).where(eq(usersToCompanies.userId, input.id));
+
+          const relationValues = input.data.companies.map((c) => ({
+            userId: input.id,
+            companyId: c,
+          }));
+
+          if (relationValues.length) {
+            await db.insert(usersToCompanies).values(relationValues);
+          }
         }
 
         return {
