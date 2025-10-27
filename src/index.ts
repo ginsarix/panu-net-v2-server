@@ -16,7 +16,20 @@ import { setRedis } from './services/redis.js';
 import { createContext } from './trpc/context.js';
 import { type AppRouter, appRouter } from './trpc/router/index.js';
 
-const fastify = Fastify();
+const fastify = Fastify({
+  logger:
+    env.NODE_ENV === 'development'
+      ? {
+          transport: {
+            target: 'pino-pretty',
+            options: {
+              translateTime: 'HH:MM:ss Z',
+              ignore: 'pid,hostname',
+            },
+          },
+        }
+      : true,
+});
 
 await fastify.register(fastifyCors, {
   origin: env.CORS_ORIGIN || 'http://localhost:5173',

@@ -102,7 +102,6 @@ export const authRouter = router({
           name: user.name,
           email: input.email.trim().toLowerCase(),
           role: user.role as 'user' | 'admin',
-          token: generateRandomHex(),
         });
         await ctx.req.session.save();
         return { success: true, deviceToken };
@@ -164,7 +163,6 @@ export const authRouter = router({
             name: twoFaContext.name,
             email: twoFaContext.email,
             role: twoFaContext.role,
-            token: generateRandomHex(),
           });
           await ctx.req.session.save();
 

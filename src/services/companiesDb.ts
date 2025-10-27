@@ -20,3 +20,16 @@ export const getCompanyById = async (id: string | number): Promise<Result<Compan
 
   return [null, null, company];
 };
+
+export const checkCompanyLicense = async (id: string | number): Promise<Result<Date>> => {
+  const companyId = typeof id === 'string' ? parseIntBase10(id) : id;
+  if (isNaN(companyId)) return [idInvalidMessage, 'BAD_REQUEST', null];
+
+  const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
+
+  if (company?.licenseDate < new Date()) {
+    return ['Bu firmanın lisansının süresi dolmuştur.', 'FORBIDDEN', null];
+  }
+
+  return [null, null, company.licenseDate];
+};

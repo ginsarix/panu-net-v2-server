@@ -13,7 +13,7 @@ import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
 import { db } from '../../db/index.js';
 import { companies } from '../../db/schema/company.js';
 import { usersToCompanies } from '../../db/schema/user-company.js';
-import { getCompanyById } from '../../services/companiesDb.js';
+import { checkCompanyLicense, getCompanyById } from '../../services/companiesDb.js';
 import { getPeriods, getWsCreditCount, login } from '../../services/web-service/sis.js';
 import {
   CreateCompanySchema,
@@ -319,6 +319,15 @@ export const companyRouter = router({
       try {
         if (ctx.user.role === 'user') {
           const userId = Number(ctx.user.id);
+
+          const [message, code] = await checkCompanyLicense(input.id);
+          if (code) {
+            throw new TRPCError({
+              code: code || 'INTERNAL_SERVER_ERROR',
+              message: message! || unexpectedErrorMessage,
+            });
+          }
+
           const userCompany = await db
             .select()
             .from(usersToCompanies)
