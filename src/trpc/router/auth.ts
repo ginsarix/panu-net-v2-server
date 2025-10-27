@@ -12,13 +12,13 @@ import {
   passwordAtleast8CharactersMessage,
   serverErrorMessage,
 } from '../../constants/messages.js';
-import { OTP_TTL } from '../../constants/redis.js';
+import { DEVICE_TTL, OTP_TTL } from '../../constants/redis.js';
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema/user.js';
 import { getRedis } from '../../services/redis.js';
 import type { Redis2FAContext } from '../../types/redis-2fa-context.js';
 import type { RedisResetPasswordContext } from '../../types/redis-reset-password-context.js';
-import { generateRandomBase64 } from '../../utils/crypto.js';
+import { generateRandomHex } from '../../utils/crypto.js';
 import { sendEmail } from '../../utils/send-email.js';
 import { protectedProcedure, publicProcedure, router } from '../index.js';
 
@@ -27,6 +27,7 @@ const generateOtp = customAlphabet('0123456789', 6);
 const AuthFormSchema = z.object({
   email: z.string().email(emailInvalidMessage),
   password: z.string().min(8, passwordAtleast8CharactersMessage),
+  deviceToken: z.string().optional(),
 });
 
 const OTPSchema = z
@@ -78,25 +79,35 @@ export const authRouter = router({
         });
       }
 
-      const now = new Date();
-      const lastLoginAt = user.lastLoginAt ? new Date(user.lastLoginAt) : null;
-      const twelveHoursMs = 12 * 60 * 60 * 1000;
-      const needsOtp = !lastLoginAt || now.getTime() - lastLoginAt.getTime() > twelveHoursMs;
+      const redis = getRedis();
+      let needsOtp = true;
+      if (input.deviceToken) {
+        const deviceKey = `device:${input.deviceToken}`;
+        const deviceUserId = await redis.get(deviceKey);
+
+        if (deviceUserId === String(user.id)) {
+          await redis.del(deviceKey);
+          needsOtp = false;
+        }
+      }
 
       if (!needsOtp) {
-        await db.update(users).set({ lastLoginAt: now }).where(eq(users.id, user.id));
+        const deviceToken = generateRandomHex();
+        const deviceKey = `device:${deviceToken}`;
+
+        await redis.set(deviceKey, String(user.id), 'EX', DEVICE_TTL);
+
         ctx.req.session.set('login', {
           id: String(user.id),
           name: user.name,
           email: input.email.trim().toLowerCase(),
           role: user.role as 'user' | 'admin',
-          token: generateRandomBase64(),
+          token: generateRandomHex(),
         });
         await ctx.req.session.save();
-        return { success: true };
+        return { success: true, deviceToken };
       }
 
-      const redis = getRedis();
       const otpIdentifier = uuid();
       const redisKey = `2fa:${otpIdentifier}`;
       const verificationCode = generateOtp();
@@ -143,19 +154,21 @@ export const authRouter = router({
 
         const twoFaContext = JSON.parse(redisValue) as Redis2FAContext;
         if (twoFaContext.verificationCode === input.verificationCode.trim()) {
+          const deviceToken = generateRandomHex();
+          const deviceKey = `device:${deviceToken}`;
+
+          await redis.set(deviceKey, twoFaContext.id, 'EX', DEVICE_TTL);
+
           ctx.req.session.set('login', {
             id: String(twoFaContext.id),
             name: twoFaContext.name,
             email: twoFaContext.email,
             role: twoFaContext.role,
-            token: generateRandomBase64(),
+            token: generateRandomHex(),
           });
           await ctx.req.session.save();
 
-          await db
-            .update(users)
-            .set({ lastLoginAt: new Date() })
-            .where(eq(users.id, Number(twoFaContext.id)));
+          return { success: true, deviceToken };
         } else {
           await redis.incr(attemptsKey);
           await redis.expire(attemptsKey, ATTEMPT_TTL);
@@ -272,19 +285,27 @@ export const authRouter = router({
         });
       }
     }),
-  logout: protectedProcedure.mutation(async ({ ctx }) => {
-    try {
-      await ctx.req.session.destroy();
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
+  logout: protectedProcedure
+    .input(z.object({ deviceToken: z.string().optional() }).optional())
+    .mutation(async ({ input, ctx }) => {
+      try {
+        if (input?.deviceToken) {
+          const redis = getRedis();
+          const deviceKey = `device:${input.deviceToken}`;
+          await redis.del(deviceKey);
+        }
 
-      ctx.req.log.error(error, 'Error during logout');
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: serverErrorMessage,
-      });
-    }
-  }),
+        await ctx.req.session.destroy();
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+
+        ctx.req.log.error(error, 'Error during logout');
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: serverErrorMessage,
+        });
+      }
+    }),
   getLogin: publicProcedure.query(({ ctx }) => {
     try {
       return ctx.req.session.get('login');

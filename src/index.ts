@@ -43,12 +43,12 @@ await fastify.register(fastifySession, {
   key: Buffer.from(env.SESSION_KEY, 'base64'),
   store: new RedisStore({
     client: redis,
-    ttl: 86400,
+    ttl: 24 * 60 * 60, // 1 day
   }),
   cookie: {
     secure: env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 86400,
+    maxAge: 24 * 60 * 60, // 1 day
     sameSite: 'lax',
     domain: undefined,
   },

@@ -1,5 +1,3 @@
 import crypto from 'node:crypto';
 
-export const generateRandomBase64 = (bytes = 32) => {
-  return crypto.randomBytes(bytes).toString('base64');
-};
+export const generateRandomHex = (bytes = 32) => crypto.randomBytes(bytes).toString('hex');

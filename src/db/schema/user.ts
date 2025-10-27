@@ -13,9 +13,9 @@ export const users = pgTable(
     updatedOn: timestamp('updated_on', { withTimezone: true }).$onUpdate(() => new Date()),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   },
-  (table) => ({
-    emailIdx: uniqueIndex('users_email_idx').on(table.email),
-    roleIdx: index('users_role_idx').on(table.role),
-    lastLoginIdx: index('users_last_login_idx').on(table.lastLoginAt),
-  }),
+  (t) => [
+    uniqueIndex('users_email_idx').on(t.email),
+    index('users_role_idx').on(t.role),
+    index('users_last_login_idx').on(t.lastLoginAt),
+  ],
 );

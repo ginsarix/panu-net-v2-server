@@ -26,9 +26,9 @@ export const companies = pgTable(
     creationDate: timestamp('creation_date', { withTimezone: true }).defaultNow().notNull(),
     updatedOn: timestamp('updated_on', { withTimezone: true }).$onUpdate(() => new Date()),
   },
-  (table) => ({
-    codeIdx: uniqueIndex('companies_code_idx').on(table.code),
-    statusIdx: index('companies_status_idx').on(table.status),
-    nameIdx: index('companies_name_idx').on(table.name),
-  }),
+  (t) => [
+    uniqueIndex('companies_code_idx').on(t.code),
+    index('companies_status_idx').on(t.status),
+    index('companies_name_idx').on(t.name),
+  ],
 );
