@@ -7,9 +7,11 @@ import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/a
 import 'dotenv/config';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
+import cron from 'node-cron';
 
 import { env } from './config/env.js';
-import { queue } from './services/queue-system/queues.js';
+import { subscriptionReminder } from './services/jobs/subscription-reminder.js';
+import { setLogger } from './services/logger.js';
 import { setRedis } from './services/redis.js';
 import { createContext } from './trpc/context.js';
 import { type AppRouter, appRouter } from './trpc/router/index.js';
@@ -24,19 +26,15 @@ await fastify.register(fastifyCors, {
 
 const redis = new Redis(env.REDIS_URI);
 
-fastify.addHook('onReady', async () => {
+fastify.addHook('onReady', () => {
   setRedis(redis);
-  await queue.add(
-    'sendSubscriptionExpiryEmails',
-    {},
-    {
-      repeat: {
-        every: 24 * 60 * 60 * 1000, // 24 * 60 * 60 * 1000, // 24 hours in ms || debug -> 1 * 60 * 1000 // 1 minutes in milliseconds
-        immediately: false,
-      },
-      removeOnComplete: true,
-    },
-  );
+  setLogger(fastify.log);
+
+  // runs every day at 5 AM
+  cron.schedule('0 5 * * *', async () => {
+    const result = await subscriptionReminder();
+    fastify.log.info(`Subscription reminder job completed: ${JSON.stringify(result)}`);
+  });
 });
 
 await fastify.register(fastifyCookie);
@@ -62,7 +60,7 @@ fastify.register(fastifyTRPCPlugin, {
     router: appRouter,
     createContext,
     onError({ path, error }: { path: string | undefined; error: Error | string }) {
-      console.error(`Error in tRPC handler on path '${path}': `, error);
+      fastify.log.error(error, `Error in tRPC handler on path '${path}'`);
     },
   } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
 });

@@ -42,7 +42,7 @@ export const userRouter = router({
         search: z.string().max(256).default(''),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         const { page, itemsPerPage, sortBy, search } = input;
 
@@ -104,7 +104,7 @@ export const userRouter = router({
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to fetch users: ', error);
+        ctx.req.log.error(error, 'Failed to fetch users');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: couldntFetchUsersMessage,
@@ -114,7 +114,7 @@ export const userRouter = router({
 
   getUser: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         const [user] = await db.select().from(users).where(eq(users.id, input.id));
 
@@ -128,7 +128,7 @@ export const userRouter = router({
         return stripSensitive(user);
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to fetch user: ', error);
+        ctx.req.log.error(error, 'Failed to fetch user');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: couldntFetchUsersMessage,
@@ -136,7 +136,7 @@ export const userRouter = router({
       }
     }),
 
-  createUser: authorizedProcedure.input(CreateUserSchema).mutation(async ({ input }) => {
+  createUser: authorizedProcedure.input(CreateUserSchema).mutation(async ({ input, ctx }) => {
     try {
       const emailAlreadyExists = (await db.select().from(users).where(eq(users.email, input.email)))
         .length;
@@ -166,7 +166,7 @@ export const userRouter = router({
       };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      console.error('Failed to create user: ', error);
+      ctx.req.log.error(error, 'Failed to create user');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Kullanıcı oluşturulurken bir hata ile karşılaşıldı.',
@@ -181,7 +181,7 @@ export const userRouter = router({
         data: UpdateUserSchema,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         if (input.data.email) {
           const emailAlreadyExists = (
@@ -232,7 +232,7 @@ export const userRouter = router({
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to update user: ', error);
+        ctx.req.log.error(error, 'Failed to update user');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Kullanıcı düzenlenirken bir hata ile karşılaşıldı.',
@@ -242,7 +242,7 @@ export const userRouter = router({
 
   deleteUser: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const [user] = await db.select().from(users).where(eq(users.id, input.id));
 
@@ -265,7 +265,7 @@ export const userRouter = router({
         return { message: 'Kullanıcı silindi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to delete user: ', error);
+        ctx.req.log.error(error, 'Failed to delete user');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Kullanıcı silinirken bir hata ile karşılaşıldı.',
@@ -275,7 +275,7 @@ export const userRouter = router({
 
   deleteUsers: authorizedProcedure
     .input(z.object({ ids: z.array(z.number().int().positive()) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const { ids } = input;
 
@@ -318,7 +318,7 @@ export const userRouter = router({
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('An error occurred while deleting users: ', error);
+        ctx.req.log.error(error, 'An error occurred while deleting users');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Kullanıcılar silinirken bir hata ile karşılaşıldı.',

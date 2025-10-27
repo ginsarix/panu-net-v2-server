@@ -18,6 +18,7 @@ import { users } from '../../db/schema/user.js';
 import { getRedis } from '../../services/redis.js';
 import type { Redis2FAContext } from '../../types/redis-2fa-context.js';
 import type { RedisResetPasswordContext } from '../../types/redis-reset-password-context.js';
+import { generateRandomBase64 } from '../../utils/crypto.js';
 import { sendEmail } from '../../utils/send-email.js';
 import { protectedProcedure, publicProcedure, router } from '../index.js';
 
@@ -89,6 +90,7 @@ export const authRouter = router({
           name: user.name,
           email: input.email.trim().toLowerCase(),
           role: user.role as 'user' | 'admin',
+          token: generateRandomBase64(),
         });
         await ctx.req.session.save();
         return { success: true };
@@ -108,13 +110,13 @@ export const authRouter = router({
       await redis.set(redisKey, JSON.stringify(redisValue), 'EX', OTP_TTL);
 
       sendOtpEmail(input.email, verificationCode).catch((err) => {
-        console.error('Failed to send OTP email:', err);
+        ctx.req.log.error(err, 'Failed to send OTP email');
       });
 
       return { otpIdentifier, ttl: OTP_TTL };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      console.error('Error during login: ', error);
+      ctx.req.log.error(error, 'Error during login');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: serverErrorMessage,
@@ -146,6 +148,7 @@ export const authRouter = router({
             name: twoFaContext.name,
             email: twoFaContext.email,
             role: twoFaContext.role,
+            token: generateRandomBase64(),
           });
           await ctx.req.session.save();
 
@@ -163,7 +166,7 @@ export const authRouter = router({
         }
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Error during verifying email: ', error);
+        ctx.req.log.error(error, 'Error during verifying email');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: serverErrorMessage,
@@ -178,7 +181,7 @@ export const authRouter = router({
         newPassword: z.string().min(8, passwordAtleast8CharactersMessage),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const [user] = await db.select().from(users).where(eq(users.email, input.email));
 
@@ -203,7 +206,7 @@ export const authRouter = router({
 
         setImmediate(() => {
           sendOtpEmail(user.email, verificationCode).catch((error) => {
-            console.error('Error occured while sending email: ', error);
+            ctx.req.log.error(error, 'Error occured while sending email');
           });
         });
 
@@ -211,7 +214,7 @@ export const authRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('Error in resetPasssword endpoint: ', error);
+        ctx.req.log.error(error, 'Error in resetPasssword endpoint');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: serverErrorMessage,
@@ -225,7 +228,7 @@ export const authRouter = router({
         verificationCode: OTPSchema,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const redis = getRedis();
         const redisKey = `passwordResetVerification:${input.identifier}`;
@@ -262,7 +265,7 @@ export const authRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('Error during verifying password reset: ', error);
+        ctx.req.log.error(error, 'Error during verifying password reset');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: serverErrorMessage,
@@ -275,7 +278,7 @@ export const authRouter = router({
     } catch (error) {
       if (error instanceof TRPCError) throw error;
 
-      console.error('Error during logout', error);
+      ctx.req.log.error(error, 'Error during logout');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: serverErrorMessage,
@@ -288,7 +291,7 @@ export const authRouter = router({
     } catch (error) {
       if (error instanceof TRPCError) throw error;
 
-      console.error('Error while getting login: ', error);
+      ctx.req.log.error(error, 'Error while getting login');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: serverErrorMessage,

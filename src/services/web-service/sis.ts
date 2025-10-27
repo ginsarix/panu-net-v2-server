@@ -7,6 +7,7 @@ import {
   unexpectedErrorMessage,
 } from '../../constants/messages.js';
 import myAxios from '../../services/api-base.js';
+import { getLogger } from '../../services/logger.js';
 import type {
   WsGetCreditCountResponse,
   WsGetPeriodsResponse,
@@ -61,7 +62,7 @@ export const login = async (request: FastifyRequest): Promise<LoginResult> => {
     await request.session.save();
     return 'successfully_logged_in';
   } else {
-    console.error(response);
+    getLogger().error(response, 'API error response');
     return 'api_error';
   }
 };

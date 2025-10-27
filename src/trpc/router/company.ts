@@ -107,7 +107,7 @@ export const companyRouter = router({
           };
         }
       } catch (error) {
-        console.error('Failed to fetch companies: ', error);
+        ctx.req.log.error(error, 'Failed to fetch companies');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: couldntFetchCompaniesMessage,
@@ -143,7 +143,7 @@ export const companyRouter = router({
         return result;
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to fetch company: ', error);
+        ctx.req.log.error(error, 'Failed to fetch company');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: couldntFetchCompaniesMessage,
@@ -151,7 +151,7 @@ export const companyRouter = router({
       }
     }),
 
-  createCompany: authorizedProcedure.input(CreateCompanySchema).mutation(async ({ input }) => {
+  createCompany: authorizedProcedure.input(CreateCompanySchema).mutation(async ({ input, ctx }) => {
     try {
       const [createdCompany] = await db
         .insert(companies)
@@ -164,7 +164,7 @@ export const companyRouter = router({
       };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      console.error('Failed to create company: ', error);
+      ctx.req.log.error(error, 'Failed to create company');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Şirket oluşturulurken bir hata ile karşılaşıldı.',
@@ -215,7 +215,7 @@ export const companyRouter = router({
         return { updatedOn: updatedCompanies[0].updatedOn, message: 'Şirket güncellendi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to update company: ', error);
+        ctx.req.log.error(error, 'Failed to update company');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Şirket düzenlenirken bir hata ile karşılaşıldı.',
@@ -225,7 +225,7 @@ export const companyRouter = router({
 
   deleteCompany: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const [message, code, result] = await getCompanyById(input.id);
 
@@ -255,7 +255,7 @@ export const companyRouter = router({
         return { message: 'Şirket silindi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to delete company: ', error);
+        ctx.req.log.error(error, 'Failed to delete company');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Şirket silinirken bir hata ile karşılaşıldı.',
@@ -265,7 +265,7 @@ export const companyRouter = router({
 
   deleteCompanies: authorizedProcedure
     .input(z.object({ ids: z.array(z.number().int().positive()) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const { ids } = input;
 
@@ -305,7 +305,7 @@ export const companyRouter = router({
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('An error occurred while deleting companies: ', error);
+        ctx.req.log.error(error, 'An error occurred while deleting companies');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Firmalar silinirken bir hata ile karşılaşıldı.',
@@ -339,7 +339,7 @@ export const companyRouter = router({
         return { message: 'Şirket başarıyla seçildi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error(`Failed to select company: ${input.id}`, error);
+        ctx.req.log.error(error, `Failed to select company: ${input.id}`);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Şirket seçilirken bir hata ile karşılaşıldı.',
@@ -368,7 +368,7 @@ export const companyRouter = router({
       };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      console.error('An error occurred while getting selected company: ', error);
+      ctx.req.log.error(error, 'An error occurred while getting selected company');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Seçili şirket getirilirken bir hata ile karşılaşıldı.',
@@ -387,7 +387,7 @@ export const companyRouter = router({
         return { message: 'Dönem başarıyla seçildi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('An error occurred while setting period: ', error);
+        ctx.req.log.error(error, 'An error occurred while setting period');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Dönem seçilirken bir hata ile karşılaşıldı.',
@@ -400,7 +400,7 @@ export const companyRouter = router({
       return { code: ctx.req.session.get('selectedPeriodCode') };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      console.error('An error occurred while getting company periods: ', error);
+      ctx.req.log.error(error, 'An error occurred while getting company periods');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Seçili Dönem getirilirken bir hata ile karşılaşıldı.',
@@ -418,7 +418,7 @@ export const companyRouter = router({
         return response.result.m_donemler;
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('An error occurred while getting company periods: ', error);
+        ctx.req.log.error(error, 'An error occurred while getting company periods');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Dönemler getirilirken bir hata ile karşılaşıldı.',
@@ -434,7 +434,7 @@ export const companyRouter = router({
       return response.result.kontorsayisi;
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      console.error('An error occurred while getting credit count: ', error);
+      ctx.req.log.error(error, 'An error occurred while getting credit count');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Kontör sorgulanırken bir hata ile karşılaşıldı.',

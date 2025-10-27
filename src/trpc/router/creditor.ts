@@ -48,7 +48,7 @@ export const creditorRouter = router({
     } catch (error) {
       if (error instanceof TRPCError) throw error;
 
-      console.error('Failed to get creditors: ', error);
+      ctx.req.log.error(error, 'Failed to get creditors');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Alacaklı cariler getirilirken bir hata ile karşılaşıldı.',

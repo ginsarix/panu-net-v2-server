@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 
 import { env } from '../config/env.js';
+import { getLogger } from '../services/logger.js';
 
 export interface SendEmailOptions {
   to: string;
@@ -34,9 +35,9 @@ export async function sendEmail({ to, subject, text, html }: SendEmailOptions): 
       html,
     });
 
-    console.log(`Email sent to ${to}`);
+    getLogger().info(`Email sent to ${to}`);
   } catch (error) {
-    console.error('Failed to send email:', error);
+    getLogger().error(error, 'Failed to send email');
     throw new Error(`Failed to send email: ${error as Error}`);
   }
 }

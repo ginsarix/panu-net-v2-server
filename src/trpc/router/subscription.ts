@@ -81,7 +81,7 @@ export const subscriptionRouter = router({
         return { subscriptions: allSubscriptions, total: totalCount };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to get subscriptions: ', error);
+        ctx.req.log.error(error, 'Failed to get subscriptions');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Abonelikler getirilirken bir hata ile karşılaşıldı.',
@@ -91,7 +91,7 @@ export const subscriptionRouter = router({
 
   createSubscription: authorizedProcedure
     .input(CreateSubscriptionSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const [createdSubscription] = await db
           .insert(subscriptions)
@@ -106,7 +106,7 @@ export const subscriptionRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('Failed to create subscription: ', error);
+        ctx.req.log.error(error, 'Failed to create subscription');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Abonelik oluşturulurken bir hata ile karşılaşıldı.',
@@ -121,7 +121,7 @@ export const subscriptionRouter = router({
         data: UpdateSubscriptionSchema,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const updatedSubscriptions = await db
           .update(subscriptions)
@@ -143,7 +143,7 @@ export const subscriptionRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('Failed to update subscription: ', error);
+        ctx.req.log.error(error, 'Failed to update subscription');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Abonelik düzenlenirken bir hata ile karşılaşıldı.',
@@ -152,7 +152,7 @@ export const subscriptionRouter = router({
     }),
   deleteSubscription: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const result = await db.delete(subscriptions).where(eq(subscriptions.id, input.id));
 
@@ -167,7 +167,7 @@ export const subscriptionRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('Failed to delete subscription: ', error);
+        ctx.req.log.error(error, 'Failed to delete subscription');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Abonelik silinirken bir hata ile karşılaşıldı.',

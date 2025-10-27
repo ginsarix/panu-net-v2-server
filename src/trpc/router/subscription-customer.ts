@@ -39,7 +39,7 @@ export const subscriptionCustomerRouter = router({
         search: z.string().max(256).default(''),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         const { page, itemsPerPage, sortBy, search } = input;
 
@@ -72,7 +72,7 @@ export const subscriptionCustomerRouter = router({
         return { subscriptionCustomers: allSubscriptionCustomers, total: totalCount };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        console.error('Failed to get subscription customers: ', error);
+        ctx.req.log.error(error, 'Failed to get subscription customers');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Müşteriler getirilirken bir hata ile karşılaşıldı.',
@@ -81,7 +81,7 @@ export const subscriptionCustomerRouter = router({
     }),
   createSubscriptionCustomer: authorizedProcedure
     .input(CreateSubscriptionCustomerSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const emailAlreadyExists = (
           await db
@@ -136,7 +136,7 @@ export const subscriptionCustomerRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('Failed to create subscription customer: ', error);
+        ctx.req.log.error(error, 'Failed to create subscription customer');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Müşteri oluşturulurken bir hata ile karşılaşıldı.',
@@ -145,7 +145,7 @@ export const subscriptionCustomerRouter = router({
     }),
   updateSubscriptionCustomer: authorizedProcedure
     .input(z.object({ id: z.number().int().positive(), data: UpdateSubscriptionCustomerSchema }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const updatedSubscriptionCustomers = await db
           .update(subscriptionCustomers)
@@ -167,7 +167,7 @@ export const subscriptionCustomerRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('An error occurred while updating subscription customer: ', error);
+        ctx.req.log.error(error, 'An error occurred while updating subscription customer');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Müşteri düzenlenilirken bir hata ile karşılaşıldı.',
@@ -176,7 +176,7 @@ export const subscriptionCustomerRouter = router({
     }),
   deleteSubscriptionCustomer: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const result = await db
           .delete(subscriptionCustomers)
@@ -193,7 +193,7 @@ export const subscriptionCustomerRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('An error occurred while deleting subscription customer: ', error);
+        ctx.req.log.error(error, 'An error occurred while deleting subscription customer');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Müşteri silinirken bir hata ile karşılaşıldı.',

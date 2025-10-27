@@ -13,6 +13,9 @@ const envSchema = z.object({
   DB_NAME: z.string().min(1),
   SMTP_USER: z.string().email(),
   SMTP_PASS: z.string().min(1),
+  NETGSM_HEADER: z.string().min(1),
+  NETGSM_USERNAME: z.string().min(1),
+  NETGSM_PASSWORD: z.string().min(1),
 });
 
 export const env = envSchema.parse(process.env);

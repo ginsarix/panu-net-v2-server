@@ -286,7 +286,7 @@ export const reportRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
 
-        console.error('An error occurred while getting general report: ', error);
+        ctx.req.log.error(error, 'An error occurred while getting general report');
 
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',

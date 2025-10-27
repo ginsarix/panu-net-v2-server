@@ -48,7 +48,7 @@ export const debtorRouter = router({
     } catch (error) {
       if (error instanceof TRPCError) throw error;
 
-      console.error('Failed to get debtors: ', error);
+      ctx.req.log.error(error, 'Failed to get debtors');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Borçlu cariler getirilirken bir hata ile karşılaşıldı.',
