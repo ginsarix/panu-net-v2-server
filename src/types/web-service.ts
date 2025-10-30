@@ -7,6 +7,39 @@ export type WsFilterOperators = '<' | '>' | '<=' | '>=' | '!' | '=' | 'IN' | 'NO
 export type WsFilter = { field: string; operator: WsFilterOperators; value: string };
 
 /**
+ * Codes of turuack field
+ *
+ * Possible values:
+ * - 1: Mal Alım
+ * - 4: Konsinye Giriş
+ * - 6: Mal Alım İade
+ * - 9: Konsinye Giriş İade
+ * - 12: Özel Giriş
+ * - 15: Müstahsil İrsaliyesi
+ * - 2: Perakende Satış
+ * - 3: Toptan Satış
+ * - 5: Konsinye Çıkış
+ * - 7: Perakende Satış İade
+ * - 8: Toptan Satış İade
+ * - 11: Konsinye Çıkış İade
+ * - 13: Özel Çıkış
+ */
+export type WsWaybillType =
+  | '1'
+  | '4'
+  | '6'
+  | '9'
+  | '12'
+  | '15'
+  | '2'
+  | '3'
+  | '5'
+  | '7'
+  | '8'
+  | '11'
+  | '13';
+
+/**
  * Codes of turu field
  *
  * Possible values:
@@ -23,6 +56,29 @@ export type WsFilter = { field: string; operator: WsFilterOperators; value: stri
  * - 10: Verilen Fiyat Farkı
  */
 export type WsInvoiceType = '1' | '4' | '6' | '15' | '7' | '8' | '2' | '3' | '5' | '9' | '10';
+
+/**
+ * Codes of turu field
+ *
+ * Possible values:
+ * - BNK: Banka Fişi
+ * - GOHVL: Gonderilen Havale
+ * - GEHVL: Gelen Havale
+ */
+
+export type WsBankReceiptType = 'BNK' | 'GOHVL' | 'GEHVL';
+
+/**
+ * Codes of turu field
+ *
+ * Possible values:
+ * - 1: Depo Fişi (Transfer)
+ * - 3: Sarf Fişi
+ * - 8: Sair Giriş
+ * - 9: Sair Çıkış
+ */
+export type WsMaterialReceiptType = '1' | '3' | '8' | '9';
+
 export interface WsRequestGenerics {
   params?: Record<string, unknown>;
   filters?: WsFilter[];
@@ -98,6 +154,7 @@ export interface WsGetCreditCountResponse extends Omit<WsResponse, 'msg'> {
 export interface WsGetWaybillListResponse extends WsResponse {
   result: {
     turuack: string;
+    turu: WsWaybillType;
     fisno: string;
     belgeno2: string;
     cariunvan: string;
@@ -149,6 +206,7 @@ export interface WsGetBankReceiptListResponse extends WsResponse {
     fisno: string;
     borc: string;
     turuack: string;
+    turu: WsBankReceiptType;
     aciklama: string;
     _cdate: string;
   }[];
@@ -172,6 +230,7 @@ export interface WsGetMaterialReceiptListResponse extends WsResponse {
     cariunvan: string;
     aciklama: string;
     turuack: string;
+    turu: WsMaterialReceiptType;
     _cdate: string;
     toplam: string;
     stokkodu: string;

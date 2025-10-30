@@ -54,19 +54,21 @@ export const protectedProcedure = t.procedure.use(async function isAuthed(opts) 
 
   const login = await loginCheck(ctx.req.session);
 
-  const selectedCompanyId = ctx.req.session.get('selectedCompanyId');
-  if (selectedCompanyId) {
-    const [message, code] = await checkCompanyLicense(selectedCompanyId);
-    if (code !== 'FORBIDDEN' && code !== null) {
-      throw new TRPCError({
-        code: code || 'INTERNAL_SERVER_ERROR',
-        message: message! || unexpectedErrorMessage,
-      });
-    }
+  if (login.role !== 'admin') {
+    const selectedCompanyId = ctx.req.session.get('selectedCompanyId');
+    if (selectedCompanyId) {
+      const [message, code] = await checkCompanyLicense(selectedCompanyId);
+      if (code !== 'FORBIDDEN' && code !== null) {
+        throw new TRPCError({
+          code: code || 'INTERNAL_SERVER_ERROR',
+          message: message! || unexpectedErrorMessage,
+        });
+      }
 
-    if (code === null) {
-      ctx.req.session.set('selectedCompanyId', undefined);
-      await ctx.req.session.save();
+      if (code === null) {
+        ctx.req.session.set('selectedCompanyId', undefined);
+        await ctx.req.session.save();
+      }
     }
   }
 
