@@ -4,7 +4,7 @@ export const companies = pgTable(
   'companies',
   {
     id: serial('id').primaryKey(),
-    code: integer('code').notNull().unique(),
+    code: integer('code').notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     manager: varchar('manager', { length: 255 }).notNull(),
     phone: varchar('phone', { length: 32 }),

@@ -64,8 +64,7 @@ export const protectedProcedure = t.procedure.use(async function isAuthed(opts) 
           message: message! || unexpectedErrorMessage,
         });
       }
-
-      if (code === null) {
+      if (code === 'FORBIDDEN') {
         ctx.req.session.set('selectedCompanyId', undefined);
         await ctx.req.session.save();
       }

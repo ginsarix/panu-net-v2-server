@@ -78,6 +78,13 @@
       "when": 1761895629782,
       "tag": "0010_thick_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1761909094304,
+      "tag": "0011_regular_forge",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "companies" DROP CONSTRAINT "companies_code_unique";
