@@ -8,6 +8,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
 import cron from 'node-cron';
+import type { WriteStream } from 'node:fs';
 
 import { env } from './config/env.js';
 import { subscriptionReminder } from './services/jobs/subscription-reminder.js';
@@ -15,6 +16,17 @@ import { setLogger } from './services/logger.js';
 import { setRedis } from './services/redis.js';
 import { createContext } from './trpc/context.js';
 import { type AppRouter, appRouter } from './trpc/router/index.js';
+
+let logStream: WriteStream | undefined;
+
+if (env.NODE_ENV === 'production') {
+  const path = await import('node:path');
+  const fs = await import('node:fs');
+
+  const logPath = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logPath)) fs.mkdirSync(logPath);
+  logStream = fs.createWriteStream(path.join(logPath, 'server.log'), { flags: 'a' });
+}
 
 const fastify = Fastify({
   logger:
@@ -28,7 +40,9 @@ const fastify = Fastify({
             },
           },
         }
-      : true,
+      : {
+          stream: logStream,
+        },
 });
 
 await fastify.register(fastifyCors, {

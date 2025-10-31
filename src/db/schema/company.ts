@@ -1,13 +1,4 @@
-import {
-  boolean,
-  index,
-  integer,
-  pgTable,
-  serial,
-  timestamp,
-  uniqueIndex,
-  varchar,
-} from 'drizzle-orm/pg-core';
+import { boolean, index, integer, pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 export const companies = pgTable(
   'companies',
@@ -27,7 +18,7 @@ export const companies = pgTable(
     updatedOn: timestamp('updated_on', { withTimezone: true }).$onUpdate(() => new Date()),
   },
   (t) => [
-    uniqueIndex('companies_code_idx').on(t.code),
+    index('companies_code_idx').on(t.code),
     index('companies_status_idx').on(t.status),
     index('companies_name_idx').on(t.name),
   ],
