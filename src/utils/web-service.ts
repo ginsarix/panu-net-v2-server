@@ -97,6 +97,22 @@ export const constructGetCashAccounts = (
   },
 });
 
+export const constructGetCashAccountMovements = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_kasakart_hareket_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const constructGetBankReceipts = (
   sessionId: string,
   companyCode: number,

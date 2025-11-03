@@ -193,10 +193,24 @@ export interface WsGetInvoiceListResponse extends WsResponse {
 
 export interface WsGetCashAccountListResponse extends WsResponse {
   result: {
+    adi: string;
+    aciklama: string;
     ba: '(B)' | '(A)';
     alacak: string;
     borc: string;
     bakiye: string;
+    _cdate: string;
+    _key: string; // used to get movements
+  }[];
+}
+
+export interface WsGetCashAccountMovementsListResponse extends WsResponse {
+  result: {
+    fisno: string;
+    alacak: string;
+    borc: string;
+    aciklama: string;
+    turu: string;
     _cdate: string;
   }[];
 }

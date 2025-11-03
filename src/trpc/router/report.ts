@@ -10,6 +10,7 @@ import type {
   WsFilter,
   WsGetBankReceiptListResponse,
   WsGetCashAccountListResponse,
+  WsGetCashAccountMovementsListResponse,
   WsGetCashCollectionListResponse,
   WsGetCheckEntriesListResponse,
   WsGetInvoiceListResponse,
@@ -18,6 +19,7 @@ import type {
 } from '../../types/web-service.js';
 import {
   constructGetBankReceipts,
+  constructGetCashAccountMovements,
   constructGetCashAccounts,
   constructGetCheckEntries,
   constructGetCreditCardCollections,
@@ -34,7 +36,12 @@ import { protectedProcedure, router } from '../index.js';
 
 export const reportRouter = router({
   getGeneralReport: protectedProcedure
-    .input(z.object({ startDate: z.date().nullish(), endDate: z.date().nullish() }))
+    .input(
+      z.object({
+        startDate: z.date({ invalid_type_error: 'Başlangıç tarihi geçersiz' }).nullish(),
+        endDate: z.date({ invalid_type_error: 'Bitiş tarihi geçersiz' }).nullish(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       try {
         await login(ctx.req);
@@ -125,7 +132,16 @@ export const reportRouter = router({
             result.code,
             selectedPeriodCode,
             {
-              selectedcolumns: ['ba', 'alacak', 'borc', 'bakiye', '_cdate'],
+              selectedcolumns: [
+                'adi',
+                'aciklama',
+                'ba',
+                'alacak',
+                'borc',
+                'bakiye',
+                '_cdate',
+                '_key',
+              ],
             },
             [isActiveFilter],
           ),
@@ -255,10 +271,6 @@ export const reportRouter = router({
           ),
         );
 
-        const cashAccountsBalanceSum = cashAccountsResponse.data.result
-          .map((ca) => Number(ca.bakiye))
-          .reduce((acc, val) => acc + val, 0);
-
         const accountCardsCreditorSum = accountCardsResponse.data.result
           .map((ac) => (ac.ba === '(A)' ? Number(ac.bakiye) : 0))
           .reduce((acc, val) => acc + val, 0);
@@ -275,7 +287,7 @@ export const reportRouter = router({
         return {
           waybills: waybillsResponse.data,
           invoices: invoicesResponse.data,
-          cashAccountsBalanceSum,
+          cashAccounts: cashAccountsResponse.data,
           bankReceipts: bankReceiptsResponse.data,
           creditCardCollections: creditCardCollectionsResponse.data,
           accountCards: accountCardsResponse.data,
@@ -293,6 +305,55 @@ export const reportRouter = router({
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Genel raporu getirirken bir hata ile karşılaşıldı.',
+        });
+      }
+    }),
+
+  getCashAccountMovements: protectedProcedure
+    .input(z.object({ cashAccountKey: z.string().min(1, 'Kasa hesabı anahtarı boş olamaz') }))
+    .query(async ({ ctx, input }) => {
+      try {
+        await login(ctx.req);
+
+        const wsSessionId = ctx.req.session.get('wsSessionId');
+        const selectedPeriodCode = ctx.req.session.get('selectedPeriodCode');
+        const [message, code, result] = await getCompanyById(
+          ctx.req.session.get('selectedCompanyId')!,
+        );
+
+        if (!result) {
+          throw new TRPCError({
+            code: code || 'INTERNAL_SERVER_ERROR',
+            message: message || unexpectedErrorMessage,
+          });
+        }
+
+        const cashAccountMovementsResponse =
+          await myAxios.post<WsGetCashAccountMovementsListResponse>(
+            sourceWithScf(result.webServiceSource),
+            constructGetCashAccountMovements(wsSessionId!, result.code, selectedPeriodCode, {
+              selectedcolumns: ['fisno', 'alacak', 'borc', 'aciklama', 'turu', '_cdate'],
+              _key: input.cashAccountKey,
+              tarihbaslangic: '2000-01-01',
+              tarihbitis: '2999-12-31',
+              cari: 'True',
+              banka: 'True',
+              kasa: 'True',
+              otel: 'True',
+              fatura: 'True',
+              ceksenet: 'True',
+            }),
+          );
+
+        return cashAccountMovementsResponse.data;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+
+        ctx.req.log.error(error, 'An error occurred while getting cash account movements');
+
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Kasa hareketleri getirilirken bir hata ile karşılaşıldı.',
         });
       }
     }),
