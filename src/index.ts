@@ -8,7 +8,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
 import cron from 'node-cron';
-import type { WriteStream } from 'node:fs';
+import * as rfs from 'rotating-file-stream';
 
 import { env } from './config/env.js';
 import { subscriptionReminder } from './services/jobs/subscription-reminder.js';
@@ -17,7 +17,7 @@ import { setRedis } from './services/redis.js';
 import { createContext } from './trpc/context.js';
 import { type AppRouter, appRouter } from './trpc/router/index.js';
 
-let logStream: WriteStream | undefined;
+let logStream: NodeJS.WritableStream | undefined;
 
 if (env.NODE_ENV === 'production') {
   const path = await import('node:path');
@@ -25,7 +25,14 @@ if (env.NODE_ENV === 'production') {
 
   const logPath = path.join(process.cwd(), 'logs');
   if (!fs.existsSync(logPath)) fs.mkdirSync(logPath);
-  logStream = fs.createWriteStream(path.join(logPath, 'server.log'), { flags: 'a' });
+
+  logStream = rfs.createStream('server.log', {
+    path: logPath,
+    size: '10M', // Rotate when file size exceeds 10MB
+    interval: '1d', // Rotate daily
+    maxFiles: 14, // Keep 14 days of logs
+    compress: 'gzip', // Compress old log files
+  });
 }
 
 const fastify = Fastify({

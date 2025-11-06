@@ -204,13 +204,47 @@ export interface WsGetCashAccountListResponse extends WsResponse {
   }[];
 }
 
+export type WsCashAccountMovementType =
+  | 'TAH'
+  | 'ODM'
+  | 'YAT'
+  | 'CEK'
+  | 'MC_PT'
+  | 'MS_PT'
+  | 'KC_MT'
+  | 'KS_MT'
+  | 'ACBO'
+  | 'ACAL'
+  | 'VRBO'
+  | 'VRAL'
+  | 'KFBO'
+  | 'KFAL'
+  | 'HZMT'
+  | 'GDPU'
+  | 'VSMM'
+  | 'ASMM'
+  | '1'
+  | '4'
+  | '6'
+  | '7'
+  | '8'
+  | '2'
+  | '3'
+  | '5'
+  | 'OTAH'
+  | 'OODM'
+  | 'IKY'
+  | 'IKC';
+
 export interface WsGetCashAccountMovementsListResponse extends WsResponse {
   result: {
     fisno: string;
     alacak: string;
     borc: string;
+    bakiye: string;
     aciklama: string;
-    turu: string;
+    turu: WsCashAccountMovementType;
+    turuack: string;
     _cdate: string;
   }[];
 }

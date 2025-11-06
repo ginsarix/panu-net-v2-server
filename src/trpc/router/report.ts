@@ -332,7 +332,7 @@ export const reportRouter = router({
           await myAxios.post<WsGetCashAccountMovementsListResponse>(
             sourceWithScf(result.webServiceSource),
             constructGetCashAccountMovements(wsSessionId!, result.code, selectedPeriodCode, {
-              selectedcolumns: ['fisno', 'alacak', 'borc', 'aciklama', 'turu', '_cdate'],
+              selectedcolumns: ['fisno', 'alacak', 'borc', 'bakiye', 'aciklama', 'turu', '_cdate'],
               _key: input.cashAccountKey,
               tarihbaslangic: '2000-01-01',
               tarihbitis: '2999-12-31',
