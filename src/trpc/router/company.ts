@@ -1,5 +1,7 @@
 import { TRPCError } from '@trpc/server';
+import { tracked } from '@trpc/server';
 import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { on } from 'node:events';
 import { z } from 'zod';
 
 import {
@@ -14,6 +16,7 @@ import { db } from '../../db/index.js';
 import { companies } from '../../db/schema/company.js';
 import { usersToCompanies } from '../../db/schema/user-company.js';
 import { checkCompanyLicense, getCompanyById } from '../../services/companiesDb.js';
+import { creditCountEmitter } from '../../services/credit-count-emitter.js';
 import { getPeriods, getWsCreditCount, login } from '../../services/web-service/sis.js';
 import {
   CreateCompanySchema,
@@ -435,19 +438,46 @@ export const companyRouter = router({
       }
     }),
 
-  getCreditCount: protectedProcedure.query(async ({ ctx }) => {
-    try {
-      await login(ctx.req);
-      const response = await getWsCreditCount(ctx.req);
+  getCreditCount: protectedProcedure.subscription(async function* (opts) {
+    const selectedCompanyId = opts.ctx.req.session.get('selectedCompanyId');
+    if (!selectedCompanyId) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Seçili şirket bulunmamaktadır.',
+      });
+    }
 
-      return response.result.kontorsayisi;
+    // Fetch initial credit count
+    try {
+      await login(opts.ctx.req);
+      const response = await getWsCreditCount(opts.ctx.req);
+      // Yield initial credit count with tracking for reconnection support
+      yield tracked(`creditCount:${selectedCompanyId}`, response.result.kontorsayisi);
     } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      ctx.req.log.error(error, 'An error occurred while getting credit count');
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      opts.ctx.req.log.error(error, 'An error occurred while getting credit count');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Kontör sorgulanırken bir hata ile karşılaşıldı.',
       });
+    }
+
+    // Listen for credit count change events
+    try {
+      for await (const [creditCount] of on(creditCountEmitter, `creditCount:${selectedCompanyId}`, {
+        signal: opts.signal,
+      })) {
+        yield tracked(`creditCount:${selectedCompanyId}`, creditCount as number);
+      }
+    } catch (error) {
+      // Handle cancellation or errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Subscription was cancelled, this is normal
+        return;
+      }
+      throw error;
     }
   }),
 });

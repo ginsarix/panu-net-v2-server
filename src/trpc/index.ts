@@ -9,7 +9,15 @@ import { users } from '../db/schema/user.js';
 import { checkCompanyLicense } from '../services/companiesDb.js';
 import type { Context } from './context.js';
 
-const t = initTRPC.context<Context>().create({ transformer: superjson });
+const t = initTRPC.context<Context>().create({
+  transformer: superjson,
+  sse: {
+    ping: {
+      enabled: true,
+      intervalMs: 2000,
+    },
+  },
+});
 
 export const router = t.router;
 export const publicProcedure = t.procedure.use(async function doesUserExist(opts) {

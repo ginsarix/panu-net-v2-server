@@ -9,7 +9,7 @@
     "outDir": "./dist",
     "rootDir": "./",
     "strict": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true

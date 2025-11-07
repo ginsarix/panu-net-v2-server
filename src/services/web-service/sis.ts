@@ -7,6 +7,7 @@ import {
   unexpectedErrorMessage,
 } from '../../constants/messages.js';
 import myAxios from '../../services/api-base.js';
+import { creditCountEmitter } from '../../services/credit-count-emitter.js';
 import { getLogger } from '../../services/logger.js';
 import type {
   WsGetCreditCountResponse,
@@ -100,6 +101,14 @@ export const getPeriods = async (request: FastifyRequest, companyCode: number) =
     }),
   );
 
+  // Emit credit count change event after web service call
+  try {
+    await getWsCreditCount(request);
+  } catch (error) {
+    // Log but don't fail if credit count fetch fails
+    getLogger().error(error, 'Failed to fetch credit count after getPeriods');
+  }
+
   return response.data;
 };
 
@@ -133,6 +142,10 @@ export const getWsCreditCount = async (request: FastifyRequest) => {
     sourceWithSis(result.webServiceSource),
     constructGetCreditCount(wsSessionId),
   );
+
+  // Emit credit count change event
+  const creditCount = response.data.result.kontorsayisi;
+  creditCountEmitter.emitCreditCountChange(selectedCompanyId, creditCount);
 
   return response.data;
 };

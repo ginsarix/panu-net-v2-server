@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 
 import { unexpectedErrorMessage } from '../../constants/messages.js';
 import { getCompanyById } from '../../services/companiesDb.js';
-import { login } from '../../services/web-service/sis.js';
+import { getWsCreditCount, login } from '../../services/web-service/sis.js';
 import { getAccountCards, handleErrorCodes, sourceWithScf } from '../../utils/web-service.js';
 import { protectedProcedure, router } from '../index.js';
 
@@ -40,6 +40,14 @@ export const debtorRouter = router({
         badRequest: responseMsg,
         internalServerError: responseMsg,
       });
+
+      // Emit credit count change event after web service call
+      try {
+        await getWsCreditCount(ctx.req);
+      } catch (error) {
+        // Log but don't fail if credit count fetch fails
+        ctx.req.log.error(error, 'Failed to fetch credit count after getDebtors');
+      }
 
       return {
         message: responseMsg,

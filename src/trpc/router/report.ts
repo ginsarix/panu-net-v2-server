@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { unexpectedErrorMessage } from '../../constants/messages.js';
 import myAxios from '../../services/api-base.js';
 import { getCompanyById } from '../../services/companiesDb.js';
-import { login } from '../../services/web-service/sis.js';
+import { getWsCreditCount, login } from '../../services/web-service/sis.js';
 import type {
   WsFilter,
   WsGetBankReceiptListResponse,
@@ -284,6 +284,14 @@ export const reportRouter = router({
           .map((i) => Number(i.toplamtutar))
           .reduce((acc, val) => acc + val, 0);
 
+        // Emit credit count change event after web service calls
+        try {
+          await getWsCreditCount(ctx.req);
+        } catch (error) {
+          // Log but don't fail if credit count fetch fails
+          ctx.req.log.error(error, 'Failed to fetch credit count after getGeneralReport');
+        }
+
         return {
           waybills: waybillsResponse.data,
           invoices: invoicesResponse.data,
@@ -344,6 +352,14 @@ export const reportRouter = router({
               ceksenet: 'True',
             }),
           );
+
+        // Emit credit count change event after web service call
+        try {
+          await getWsCreditCount(ctx.req);
+        } catch (error) {
+          // Log but don't fail if credit count fetch fails
+          ctx.req.log.error(error, 'Failed to fetch credit count after getCashAccountMovements');
+        }
 
         return cashAccountMovementsResponse.data;
       } catch (error) {
