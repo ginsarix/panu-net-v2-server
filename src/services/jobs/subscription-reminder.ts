@@ -7,7 +7,7 @@ import { subscriptionCustomers } from '../../db/schema/subscription-customer.js'
 import { subscriptions } from '../../db/schema/subscription.js';
 import { sendEmail } from '../../utils/send-email.js';
 import { getLogger } from '../logger.js';
-import { netgsm } from '../netgsm.js';
+import { sendRestSms } from '../netgsm.js';
 
 export const subscriptionReminder = async () => {
   const today = new Date();
@@ -64,7 +64,7 @@ export const subscriptionReminder = async () => {
     }
   }
   try {
-    await netgsm.sendRestSms({ messages: smsMessages, msgheader: env.NETGSM_HEADER });
+    await sendRestSms({ messages: smsMessages, msgheader: env.NETGSM_HEADER });
   } catch (error) {
     getLogger().error(error, 'An error occurred while sending SMS messages');
   }

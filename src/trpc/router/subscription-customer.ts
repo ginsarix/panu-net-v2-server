@@ -2,14 +2,17 @@ import { TRPCError } from '@trpc/server';
 import { asc, desc, eq, ilike } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { env } from '../../config/env.js';
 import { emailAlreadyExistsMessage, phoneAlreadyExistsMessage } from '../../constants/messages.js';
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
 import { db } from '../../db/index.js';
 import { subscriptionCustomers } from '../../db/schema/subscription-customer.js';
+import { sendRestSms } from '../../services/netgsm.js';
 import {
   CreateSubscriptionCustomerSchema,
   UpdateSubscriptionCustomerSchema,
 } from '../../services/zod-validations/subscription-customer.js';
+import { sendEmail } from '../../utils/send-email.js';
 import { authorizedProcedure, router } from '../index.js';
 
 export const subscriptionCustomerRouter = router({
@@ -197,6 +200,43 @@ export const subscriptionCustomerRouter = router({
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Müşteri silinirken bir hata ile karşılaşıldı.',
+        });
+      }
+    }),
+  testNotification: authorizedProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        phone: z.string().optional(),
+        remindExpiryWithEmail: z.boolean(),
+        remindExpiryWithSms: z.boolean(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        let emailsSent = 0;
+        let smsSent = 0;
+
+        if (input.remindExpiryWithEmail) {
+          await sendEmail({ to: input.email, subject: 'Bildirim testi' });
+          emailsSent++;
+        }
+        if (input.remindExpiryWithSms) {
+          await sendRestSms({
+            messages: [{ msg: 'Bildirim testi', no: input.phone! }],
+            msgheader: env.NETGSM_HEADER,
+          });
+
+          smsSent++;
+        }
+
+        return { message: 'Bildirim testi tamamlandı', result: { emailsSent, smsSent } };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        ctx.req.log.error(error, 'Failed to test notification');
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Notification test failed.',
         });
       }
     }),
