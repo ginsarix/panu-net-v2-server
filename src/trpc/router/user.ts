@@ -12,6 +12,7 @@ import {
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
 import { db } from '../../db/index.js';
 import { usersToCompanies } from '../../db/schema/user-company.js';
+import { usersToPageRoles } from '../../db/schema/user-page-role.js';
 import { users } from '../../db/schema/user.js';
 import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.js';
 import { authorizedProcedure, router } from '../index.js';
@@ -93,9 +94,32 @@ export const userRouter = router({
           {} as Record<number, number[]>,
         );
 
+        const userPageRoles =
+          userIds.length > 0
+            ? await db
+                .select({
+                  userId: usersToPageRoles.userId,
+                  pageRoleId: usersToPageRoles.pageRoleId,
+                })
+                .from(usersToPageRoles)
+                .where(inArray(usersToPageRoles.userId, userIds))
+            : [];
+
+        const pageRoleIdsByUser = userPageRoles.reduce(
+          (acc, { userId, pageRoleId }) => {
+            if (!acc[userId]) {
+              acc[userId] = [];
+            }
+            acc[userId].push(pageRoleId);
+            return acc;
+          },
+          {} as Record<number, number[]>,
+        );
+
         const result = fetchedUsers.map((user) => ({
           ...stripSensitive(user),
           companyIds: companyIdsByUser[user.id] || [],
+          pageRoleIds: pageRoleIdsByUser[user.id] || [],
         }));
 
         return {
@@ -158,6 +182,14 @@ export const userRouter = router({
       const relationValues = input.companies.map((c) => ({ userId: createdUser.id, companyId: c }));
 
       if (relationValues.length) await db.insert(usersToCompanies).values(relationValues);
+
+      if (input.pageRoles && input.pageRoles.length > 0) {
+        const pageRoleValues = input.pageRoles.map((roleId) => ({
+          userId: createdUser.id,
+          pageRoleId: roleId,
+        }));
+        await db.insert(usersToPageRoles).values(pageRoleValues);
+      }
 
       return {
         message: 'Kullanıcı başarıyla oluşturuldu.',
@@ -223,6 +255,18 @@ export const userRouter = router({
 
           if (relationValues.length) {
             await db.insert(usersToCompanies).values(relationValues);
+          }
+        }
+
+        if (input.data.pageRoles !== undefined) {
+          await db.delete(usersToPageRoles).where(eq(usersToPageRoles.userId, input.id));
+
+          if (input.data.pageRoles.length > 0) {
+            const pageRoleValues = input.data.pageRoles.map((roleId) => ({
+              userId: input.id,
+              pageRoleId: roleId,
+            }));
+            await db.insert(usersToPageRoles).values(pageRoleValues);
           }
         }
 

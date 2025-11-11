@@ -10,10 +10,10 @@ import {
   CreateSubscriptionSchema,
   UpdateSubscriptionSchema,
 } from '../../services/zod-validations/subscription.js';
-import { authorizedProcedure, protectedProcedure, router } from '../index.js';
+import { authorizedProcedure, pageRoleProtectedProcedure, router } from '../index.js';
 
 export const subscriptionRouter = router({
-  getSubscriptions: protectedProcedure
+  getSubscriptions: pageRoleProtectedProcedure('SUBSCRIPTION_VIEW')
     .input(
       z.object({
         page: z.number().min(1).default(1),

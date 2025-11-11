@@ -85,6 +85,13 @@
       "when": 1761909094304,
       "tag": "0011_regular_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1762846324595,
+      "tag": "0012_smart_iron_lad",
+      "breakpoints": true
     }
   ]
 }

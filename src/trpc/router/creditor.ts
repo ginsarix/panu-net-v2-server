@@ -4,10 +4,10 @@ import { unexpectedErrorMessage } from '../../constants/messages.js';
 import { getCompanyById } from '../../services/companiesDb.js';
 import { getWsCreditCount, login } from '../../services/web-service/sis.js';
 import { getAccountCards, handleErrorCodes, sourceWithScf } from '../../utils/web-service.js';
-import { protectedProcedure, router } from '../index.js';
+import { pageRoleProtectedProcedure, router } from '../index.js';
 
 export const creditorRouter = router({
-  getCreditors: protectedProcedure.query(async ({ ctx }) => {
+  getCreditors: pageRoleProtectedProcedure('CREDITOR_VIEW').query(async ({ ctx }) => {
     try {
       await login(ctx.req);
 

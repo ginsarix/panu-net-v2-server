@@ -13,10 +13,10 @@ import {
   UpdateSubscriptionCustomerSchema,
 } from '../../services/zod-validations/subscription-customer.js';
 import { sendEmail } from '../../utils/send-email.js';
-import { authorizedProcedure, router } from '../index.js';
+import { authorizedProcedure, pageRoleProtectedProcedure, router } from '../index.js';
 
 export const subscriptionCustomerRouter = router({
-  getSubscriptionCustomers: authorizedProcedure
+  getSubscriptionCustomers: pageRoleProtectedProcedure('CUSTOMER_VIEW')
     .input(
       z.object({
         page: z.number().min(1).default(1),

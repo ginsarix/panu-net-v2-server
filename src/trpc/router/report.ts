@@ -32,10 +32,10 @@ import {
   sourceWithBcs,
   sourceWithScf,
 } from '../../utils/web-service.js';
-import { protectedProcedure, router } from '../index.js';
+import { pageRoleProtectedProcedure, router } from '../index.js';
 
 export const reportRouter = router({
-  getGeneralReport: protectedProcedure
+  getGeneralReport: pageRoleProtectedProcedure('REPORT_VIEW')
     .input(
       z.object({
         startDate: z.date({ invalid_type_error: 'Başlangıç tarihi geçersiz' }).nullish(),
@@ -317,7 +317,7 @@ export const reportRouter = router({
       }
     }),
 
-  getCashAccountMovements: protectedProcedure
+  getCashAccountMovements: pageRoleProtectedProcedure('REPORT_VIEW')
     .input(z.object({ cashAccountKey: z.string().min(1, 'Kasa hesabı anahtarı boş olamaz') }))
     .query(async ({ ctx, input }) => {
       try {

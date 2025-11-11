@@ -1,0 +1,51 @@
+export const PAGE_ROLE_KEYS = {
+  DEBTOR_VIEW: 'debtor_view',
+  CREDITOR_VIEW: 'creditor_view',
+  SUBSCRIPTION_VIEW: 'subscription_view',
+  CUSTOMER_VIEW: 'customer_view',
+  REPORT_VIEW: 'report_view',
+  RECEIVED_ORDER_VIEW: 'received_order_view',
+  DISPATCHED_ORDER_VIEW: 'dispatched_order_view',
+} as const;
+
+export type PageRoleKey = (typeof PAGE_ROLE_KEYS)[keyof typeof PAGE_ROLE_KEYS];
+
+export interface PageRoleDefinition {
+  key: PageRoleKey;
+  name: string;
+  description: string;
+  pagePath: string;
+}
+
+export const PAGE_ROLE_DEFINITIONS: PageRoleDefinition[] = [
+  {
+    key: PAGE_ROLE_KEYS.DEBTOR_VIEW,
+    name: 'Borçlu',
+    description: 'Borçlu sayfasına erişim yetkisi',
+    pagePath: '/dbcr/debtors',
+  },
+  {
+    key: PAGE_ROLE_KEYS.CREDITOR_VIEW,
+    name: 'Alacaklı',
+    description: 'Alacaklı sayfasına erişim yetkisi',
+    pagePath: '/dbcr/creditors',
+  },
+  {
+    key: PAGE_ROLE_KEYS.SUBSCRIPTION_VIEW,
+    name: 'Abonelik',
+    description: 'Abonelik sayfasına erişim yetkisi',
+    pagePath: '/task-tracking/subscriptions',
+  },
+  {
+    key: PAGE_ROLE_KEYS.CUSTOMER_VIEW,
+    name: 'Abonelik Müşterileri',
+    description: 'Abonelik müşterileri sayfasına erişim yetkisi',
+    pagePath: '/task-tracking/customers',
+  },
+  {
+    key: PAGE_ROLE_KEYS.REPORT_VIEW,
+    name: 'Rapor',
+    description: 'Rapor sayfasına erişim yetkisi',
+    pagePath: '/reports/general-report',
+  },
+];

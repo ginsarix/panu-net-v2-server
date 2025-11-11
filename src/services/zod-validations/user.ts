@@ -26,6 +26,7 @@ export const CreateUserSchema = z.object({
     })
     .default('user'),
   companies: z.array(z.number().int().positive()),
+  pageRoles: z.array(z.number().int().positive()).optional(),
 });
 
 export const UpdateUserSchema = CreateUserSchema.partial().refine(
