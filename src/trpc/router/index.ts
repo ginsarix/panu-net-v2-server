@@ -9,6 +9,7 @@ import { subscriptionCustomerRouter } from './subscription-customer.js';
 import { subscriptionRouter } from './subscription.js';
 import { userRouter } from './user.js';
 import { contractRouter } from './contract.js';
+import { stockRouter } from './stock.js';
 
 export const appRouter = router({
   user: userRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   report: reportRouter,
   pageRole: pageRoleRouter,
   contract: contractRouter,
+  stock: stockRouter,
 });
 
 export type AppRouter = typeof appRouter;

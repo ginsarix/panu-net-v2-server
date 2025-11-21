@@ -203,6 +203,38 @@ export const constructGetCreditCount = (
   },
 });
 
+export const constructGetStocks = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_stokkart_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
+export const constructGetServices = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_hizmetkart_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const sourceWithSlash = (wsSource: string) => {
   return wsSource.endsWith('/') ? wsSource : wsSource + '/';
 };
@@ -248,6 +280,8 @@ export const handleErrorCodes = (
     });
   }
 };
+
+export const isActiveFilter: WsFilter = { field: 'durum', operator: '=', value: 'A' };
 
 export const dateRangeFilters = (startDate: Date, endDate: Date): WsFilter[] => {
   return [

@@ -3,7 +3,12 @@ import { TRPCError } from '@trpc/server';
 import { unexpectedErrorMessage } from '../../constants/messages.js';
 import { getCompanyById } from '../../services/companiesDb.js';
 import { getWsCreditCount, login } from '../../services/web-service/sis.js';
-import { getAccountCards, handleErrorCodes, sourceWithScf } from '../../utils/web-service.js';
+import {
+  getAccountCards,
+  handleErrorCodes,
+  isActiveFilter,
+  sourceWithScf,
+} from '../../utils/web-service.js';
 import { pageRoleProtectedProcedure, router } from '../index.js';
 
 export const debtorRouter = router({
@@ -31,6 +36,7 @@ export const debtorRouter = router({
         {
           selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
         },
+        [isActiveFilter],
       );
 
       const responseMsg = debtors.data.msg;

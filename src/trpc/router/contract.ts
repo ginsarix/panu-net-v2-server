@@ -1,4 +1,4 @@
-import { authorizedProcedure, protectedProcedure, router } from '../index.js';
+import { authorizedProcedure, pageRoleProtectedProcedure, router } from '../index.js';
 import {
   ContractCreateSchema,
   ContractEditSchema,
@@ -98,7 +98,7 @@ export const contractRouter = router({
       }
     }),
 
-  getContracts: protectedProcedure.query(async ({ ctx }) => {
+  getContracts: pageRoleProtectedProcedure('CONTRACT_VIEW').query(async ({ ctx }) => {
     try {
       const isAdmin = ctx.user.role === 'admin';
 

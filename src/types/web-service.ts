@@ -302,3 +302,23 @@ export interface WsGetCheckEntriesListResponse extends WsResponse {
     _cdate: string;
   }[];
 }
+
+export interface WsGetStocksResponse extends WsResponse {
+  result: {
+    stokkartkodu: string;
+    aciklama: string;
+    stokkartturu: string;
+    fiili_stok: string;
+    birimadi: string;
+  }[];
+}
+
+export interface WsGetServicesResponse extends WsResponse {
+  result: {
+    hizmetkartkodu: string;
+    aciklama: string;
+    hizmetkartturuack: string;
+    miktar: string;
+    birimadi: string;
+  }[];
+}

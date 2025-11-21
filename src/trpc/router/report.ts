@@ -7,7 +7,6 @@ import myAxios from '../../services/api-base.js';
 import { getCompanyById } from '../../services/companiesDb.js';
 import { getWsCreditCount, login } from '../../services/web-service/sis.js';
 import type {
-  WsFilter,
   WsGetBankReceiptListResponse,
   WsGetCashAccountListResponse,
   WsGetCashAccountMovementsListResponse,
@@ -29,6 +28,7 @@ import {
   createdAtTodayFilters,
   dateRangeFilters,
   getAccountCards,
+  isActiveFilter,
   sourceWithBcs,
   sourceWithScf,
 } from '../../utils/web-service.js';
@@ -60,8 +60,6 @@ export const reportRouter = router({
         const filters = !(input.startDate && input.endDate)
           ? createdAtTodayFilters()
           : dateRangeFilters(input.startDate, input.endDate);
-
-        const isActiveFilter: WsFilter = { field: 'durum', operator: '=', value: 'A' };
 
         const wsSessionId = ctx.req.session.get('wsSessionId');
         const selectedPeriodCode = ctx.req.session.get('selectedPeriodCode');
