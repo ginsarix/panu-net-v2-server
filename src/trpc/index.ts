@@ -1,4 +1,3 @@
-import type { Session } from '@mgcrea/fastify-session';
 import { TRPCError, initTRPC } from '@trpc/server';
 import { and, eq } from 'drizzle-orm';
 import superjson from 'superjson';
@@ -11,9 +10,11 @@ import { usersToPageRoles } from '../db/schema/user-page-role.js';
 import { users } from '../db/schema/user.js';
 import { checkCompanyLicense } from '../services/companiesDb.js';
 import type { Context } from './context.js';
+import { loginCheck } from '../utils/auth.js';
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
+
   sse: {
     ping: {
       enabled: true,
@@ -92,26 +93,6 @@ export const pageRoleProtectedProcedure = (requiredRoleKey: keyof typeof PAGE_RO
     });
   });
 
-const loginCheck = async (session: Session) => {
-  const login = session.get('login');
-
-  const unauthorizedError = new TRPCError({
-    message: unauthorizedErrorMessage,
-    code: 'UNAUTHORIZED',
-  });
-
-  if (!login) throw unauthorizedError;
-
-  const userExists = (await db.select().from(users).where(eq(users.id, +login.id))).length;
-
-  if (!userExists) {
-    await session.destroy();
-    throw unauthorizedError;
-  }
-
-  return login;
-};
-
 export const protectedProcedure = t.procedure.use(async function isAuthed(opts) {
   const { ctx } = opts;
 
@@ -144,7 +125,6 @@ export const protectedProcedure = t.procedure.use(async function isAuthed(opts) 
 
 export const authorizedProcedure = t.procedure.use(async function isAuthorized(opts) {
   const { ctx } = opts;
-
   const login = await loginCheck(ctx.req.session);
 
   if (login.role !== 'admin') {

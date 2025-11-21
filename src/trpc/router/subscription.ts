@@ -1,9 +1,10 @@
 import { TRPCError } from '@trpc/server';
-import { and, asc, desc, eq, ilike } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
 import { db } from '../../db/index.js';
+import { subscriptionsToCustomers } from '../../db/schema/subscription-customer-junction.js';
 import { subscriptionCustomers } from '../../db/schema/subscription-customer.js';
 import { subscriptions } from '../../db/schema/subscription.js';
 import {
@@ -47,38 +48,104 @@ export const subscriptionRouter = router({
 
         const sortColumn = sortableColumns[sortBy[0].key as keyof typeof sortableColumns];
         const sortFn = sortBy[0].order === 'asc' ? asc : desc;
-        const searchFilter = search ? ilike(subscriptionCustomers.title, `%${search}%`) : undefined;
-        const currentUserFilter = eq(subscriptionCustomers.id, +ctx.user.id);
-
         const isAdmin = ctx.user.role === 'admin';
 
-        const whereClause = !isAdmin
-          ? searchFilter
-            ? and(searchFilter, currentUserFilter)
-            : currentUserFilter
-          : searchFilter;
+        // For non-admin users, we need to filter by customer relationships
+        // For admin users with search, we need to filter by customer title
+        let customerWhereClause: ReturnType<typeof and> | ReturnType<typeof eq> | undefined;
+        if (!isAdmin) {
+          customerWhereClause = eq(subscriptionCustomers.id, +ctx.user.id);
+        } else if (search) {
+          customerWhereClause = ilike(subscriptionCustomers.title, `%${search}%`);
+        }
 
-        const countSubquery = db
-          .select({ subscriptions })
+        const baseQuery = db
+          .selectDistinct({ subscriptions })
           .from(subscriptions)
-          .innerJoin(subscriptionCustomers, eq(subscriptions.userId, subscriptionCustomers.id))
-          .as('sub');
+          .leftJoin(
+            subscriptionsToCustomers,
+            eq(subscriptions.id, subscriptionsToCustomers.subscriptionId),
+          )
+          .leftJoin(
+            subscriptionCustomers,
+            eq(subscriptionsToCustomers.customerId, subscriptionCustomers.id),
+          );
 
-        const [allSubscriptionsRaw, totalCount] = await Promise.all([
-          db
-            .select({ subscriptions })
-            .from(subscriptions)
-            .innerJoin(subscriptionCustomers, eq(subscriptions.userId, subscriptionCustomers.id))
-            .where(whereClause)
-            .orderBy(sortFn(sortColumn))
-            .offset(skip)
-            .limit(itemsPerPage),
-          db.$count(countSubquery, !isAdmin ? currentUserFilter : undefined),
+        // Apply filters: if we have customer filters, apply them; otherwise get all subscriptions
+        const queryWithFilters = customerWhereClause
+          ? baseQuery.where(customerWhereClause)
+          : baseQuery;
+
+        const [allSubscriptionsRaw, totalCountResult] = await Promise.all([
+          queryWithFilters.orderBy(sortFn(sortColumn)).offset(skip).limit(itemsPerPage),
+          !isAdmin
+            ? db
+                .select({ count: sql<number>`count(distinct ${subscriptions.id})` })
+                .from(subscriptions)
+                .leftJoin(
+                  subscriptionsToCustomers,
+                  eq(subscriptions.id, subscriptionsToCustomers.subscriptionId),
+                )
+                .leftJoin(
+                  subscriptionCustomers,
+                  eq(subscriptionsToCustomers.customerId, subscriptionCustomers.id),
+                )
+                .where(eq(subscriptionCustomers.id, +ctx.user.id))
+            : search
+              ? db
+                  .select({ count: sql<number>`count(distinct ${subscriptions.id})` })
+                  .from(subscriptions)
+                  .leftJoin(
+                    subscriptionsToCustomers,
+                    eq(subscriptions.id, subscriptionsToCustomers.subscriptionId),
+                  )
+                  .leftJoin(
+                    subscriptionCustomers,
+                    eq(subscriptionsToCustomers.customerId, subscriptionCustomers.id),
+                  )
+                  .where(ilike(subscriptionCustomers.title, `%${search}%`))
+              : db.$count(subscriptions),
         ]);
 
         const allSubscriptions = allSubscriptionsRaw.map((raw) => raw.subscriptions);
 
-        return { subscriptions: allSubscriptions, total: totalCount };
+        // Get customer IDs for each subscription
+        const subscriptionIds = allSubscriptions.map((s) => s.id);
+        const customerRelations =
+          subscriptionIds.length > 0
+            ? await db
+                .select({
+                  subscriptionId: subscriptionsToCustomers.subscriptionId,
+                  customerId: subscriptionsToCustomers.customerId,
+                })
+                .from(subscriptionsToCustomers)
+                .where(inArray(subscriptionsToCustomers.subscriptionId, subscriptionIds))
+            : [];
+
+        // Group customer IDs by subscription ID
+        const customerIdsBySubscription = customerRelations.reduce(
+          (acc, rel) => {
+            if (!acc[rel.subscriptionId]) {
+              acc[rel.subscriptionId] = [];
+            }
+            acc[rel.subscriptionId].push(rel.customerId);
+            return acc;
+          },
+          {} as Record<number, number[]>,
+        );
+
+        // Add customerIds to each subscription
+        const subscriptionsWithCustomers = allSubscriptions.map((sub) => ({
+          ...sub,
+          customerIds: customerIdsBySubscription[sub.id] || [],
+        }));
+
+        const totalCount =
+          typeof totalCountResult === 'number'
+            ? totalCountResult
+            : Number(totalCountResult[0]?.count || 0);
+
+        return { subscriptions: subscriptionsWithCustomers, total: totalCount };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         ctx.req.log.error(error, 'Failed to get subscriptions');
@@ -93,10 +160,22 @@ export const subscriptionRouter = router({
     .input(CreateSubscriptionSchema)
     .mutation(async ({ input, ctx }) => {
       try {
+        const { customerIds = [], ...subscriptionData } = input;
+
         const [createdSubscription] = await db
           .insert(subscriptions)
-          .values(input)
+          .values(subscriptionData)
           .returning({ id: subscriptions.id, creationDate: subscriptions.creationDate });
+
+        // Insert customer relationships
+        if (customerIds && customerIds.length > 0) {
+          await db.insert(subscriptionsToCustomers).values(
+            customerIds.map((customerId) => ({
+              subscriptionId: createdSubscription.id,
+              customerId,
+            })),
+          );
+        }
 
         return {
           message: 'Abonelik başarıyla eklendi.',
@@ -123,9 +202,12 @@ export const subscriptionRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        const { customerIds, ...subscriptionData } = input.data;
+
+        // Update subscription fields (excluding customerIds)
         const updatedSubscriptions = await db
           .update(subscriptions)
-          .set(input.data)
+          .set(subscriptionData)
           .where(eq(subscriptions.id, input.id))
           .returning();
 
@@ -134,6 +216,24 @@ export const subscriptionRouter = router({
             code: 'NOT_FOUND',
             message: 'Abonelik bulunamadı.',
           });
+        }
+
+        // Update customer relationships if customerIds is provided
+        if (customerIds !== undefined) {
+          // Delete existing relationships
+          await db
+            .delete(subscriptionsToCustomers)
+            .where(eq(subscriptionsToCustomers.subscriptionId, input.id));
+
+          // Insert new relationships
+          if (customerIds.length > 0) {
+            await db.insert(subscriptionsToCustomers).values(
+              customerIds.map((customerId) => ({
+                subscriptionId: input.id,
+                customerId,
+              })),
+            );
+          }
         }
 
         return {

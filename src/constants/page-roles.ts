@@ -6,6 +6,7 @@ export const PAGE_ROLE_KEYS = {
   REPORT_VIEW: 'report_view',
   RECEIVED_ORDER_VIEW: 'received_order_view',
   DISPATCHED_ORDER_VIEW: 'dispatched_order_view',
+  CONTRACT_VIEW: 'contract_view',
 } as const;
 
 export type PageRoleKey = (typeof PAGE_ROLE_KEYS)[keyof typeof PAGE_ROLE_KEYS];
@@ -47,5 +48,11 @@ export const PAGE_ROLE_DEFINITIONS: PageRoleDefinition[] = [
     name: 'Rapor',
     description: 'Rapor sayfasına erişim yetkisi',
     pagePath: '/reports/general-report',
+  },
+  {
+    key: PAGE_ROLE_KEYS.CONTRACT_VIEW,
+    name: 'Sözleşme',
+    description: 'Sözleşme sayfasına erişim yetkisi',
+    pagePath: '/contracts',
   },
 ];

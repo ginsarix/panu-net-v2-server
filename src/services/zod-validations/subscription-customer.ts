@@ -7,7 +7,7 @@ import {
 } from '../../constants/messages.js';
 
 export const CreateSubscriptionCustomerSchema = z.object({
-  customerCode: z.number().int().positive().nullish(),
+  customerCode: z.string().nullish(),
   title: z.string().min(1, 'Ünvan gereklidir.'),
   phone: z
     .string()
@@ -21,6 +21,7 @@ export const CreateSubscriptionCustomerSchema = z.object({
   address: z.string().nullish(),
   status: z.boolean(),
   manager: z.string().nullish(),
+  subscriptionIds: z.array(z.number().int().positive()).optional(),
 });
 
 export const UpdateSubscriptionCustomerSchema = CreateSubscriptionCustomerSchema.partial().refine(

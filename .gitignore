@@ -10,3 +10,9 @@ dist/
 
 wwwroot/
 .DS_Store
+
+# Ignore all files recursively
+files/**
+
+# But keep all directories (so Git can track empty folders)
+!files/**/

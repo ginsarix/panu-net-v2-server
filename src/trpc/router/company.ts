@@ -365,10 +365,10 @@ export const companyRouter = router({
 
       const notFoundError = new TRPCError({
         code: 'NOT_FOUND',
-        message: 'Seçili şirket bulunamadı.',
+        message: 'Şirket bulunamadı.',
       });
 
-      if (!id) throw notFoundError;
+      if (!id) return { message: 'Şirket bulunamadı.', id: null };
 
       const company = await db.select().from(companies).where(eq(companies.id, id));
 

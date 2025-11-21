@@ -16,6 +16,7 @@ const envSchema = z.object({
   NETGSM_HEADER: z.string().min(1),
   NETGSM_USERNAME: z.string().min(1),
   NETGSM_PASSWORD: z.string().min(1),
+  SENTRY_DSN: z.string().url().optional(),
 });
 
 export const env = envSchema.parse(process.env);

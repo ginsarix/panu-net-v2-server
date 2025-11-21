@@ -1,0 +1,1 @@
+ALTER TABLE "contracts" DROP CONSTRAINT "contracts_file_name_unique";

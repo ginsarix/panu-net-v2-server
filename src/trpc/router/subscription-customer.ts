@@ -1,11 +1,12 @@
 import { TRPCError } from '@trpc/server';
-import { asc, desc, eq, ilike } from 'drizzle-orm';
+import { asc, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { env } from '../../config/env.js';
 import { emailAlreadyExistsMessage, phoneAlreadyExistsMessage } from '../../constants/messages.js';
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
 import { db } from '../../db/index.js';
+import { subscriptionsToCustomers } from '../../db/schema/subscription-customer-junction.js';
 import { subscriptionCustomers } from '../../db/schema/subscription-customer.js';
 import { sendRestSms } from '../../services/netgsm.js';
 import {
@@ -69,10 +70,41 @@ export const subscriptionCustomerRouter = router({
             .orderBy(sortFn(sortColumn))
             .offset(skip)
             .limit(itemsPerPage),
-          db.$count(subscriptionCustomers),
+          db.$count(subscriptionCustomers, whereClause),
         ]);
 
-        return { subscriptionCustomers: allSubscriptionCustomers, total: totalCount };
+        // Get subscription IDs for each customer
+        const customerIds = allSubscriptionCustomers.map((c) => c.id);
+        const subscriptionRelations =
+          customerIds.length > 0
+            ? await db
+                .select({
+                  customerId: subscriptionsToCustomers.customerId,
+                  subscriptionId: subscriptionsToCustomers.subscriptionId,
+                })
+                .from(subscriptionsToCustomers)
+                .where(inArray(subscriptionsToCustomers.customerId, customerIds))
+            : [];
+
+        // Group subscription IDs by customer ID
+        const subscriptionIdsByCustomer = subscriptionRelations.reduce(
+          (acc, rel) => {
+            if (!acc[rel.customerId]) {
+              acc[rel.customerId] = [];
+            }
+            acc[rel.customerId].push(rel.subscriptionId);
+            return acc;
+          },
+          {} as Record<number, number[]>,
+        );
+
+        // Add subscriptionIds to each customer
+        const customersWithSubscriptions = allSubscriptionCustomers.map((customer) => ({
+          ...customer,
+          subscriptionIds: subscriptionIdsByCustomer[customer.id] || [],
+        }));
+
+        return { subscriptionCustomers: customersWithSubscriptions, total: totalCount };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         ctx.req.log.error(error, 'Failed to get subscription customers');
@@ -123,13 +155,25 @@ export const subscriptionCustomerRouter = router({
           });
         }
 
+        const { subscriptionIds, ...customerData } = input;
+
         const [createdSubscriptionCustomer] = await db
           .insert(subscriptionCustomers)
-          .values(input)
+          .values(customerData)
           .returning({
             id: subscriptionCustomers.id,
             creationDate: subscriptionCustomers.creationDate,
           });
+
+        // Insert subscription relationships
+        if (subscriptionIds && subscriptionIds.length > 0) {
+          await db.insert(subscriptionsToCustomers).values(
+            subscriptionIds.map((subscriptionId) => ({
+              customerId: createdSubscriptionCustomer.id,
+              subscriptionId,
+            })),
+          );
+        }
 
         return {
           message: 'Müşteri başarıyla oluşturuldu.',
@@ -150,9 +194,12 @@ export const subscriptionCustomerRouter = router({
     .input(z.object({ id: z.number().int().positive(), data: UpdateSubscriptionCustomerSchema }))
     .mutation(async ({ input, ctx }) => {
       try {
+        const { subscriptionIds, ...customerData } = input.data;
+
+        // Update customer fields (excluding subscriptionIds)
         const updatedSubscriptionCustomers = await db
           .update(subscriptionCustomers)
-          .set(input.data)
+          .set(customerData)
           .where(eq(subscriptionCustomers.id, input.id))
           .returning({ updatedOn: subscriptionCustomers.updatedOn });
 
@@ -161,6 +208,24 @@ export const subscriptionCustomerRouter = router({
             code: 'NOT_FOUND',
             message: 'Müşteri bulunamadı.',
           });
+        }
+
+        // Update subscription relationships if subscriptionIds is provided
+        if (subscriptionIds !== undefined) {
+          // Delete existing relationships
+          await db
+            .delete(subscriptionsToCustomers)
+            .where(eq(subscriptionsToCustomers.customerId, input.id));
+
+          // Insert new relationships
+          if (subscriptionIds.length > 0) {
+            await db.insert(subscriptionsToCustomers).values(
+              subscriptionIds.map((subscriptionId) => ({
+                customerId: input.id,
+                subscriptionId,
+              })),
+            );
+          }
         }
 
         return {

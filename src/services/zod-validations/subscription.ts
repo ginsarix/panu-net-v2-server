@@ -10,7 +10,7 @@ export const CreateSubscriptionSchema = z.object({
   startDate: isoDateOnly,
   endDate: isoDateOnly,
   subscriptionType: z.enum(['domain', 'ssl', 'hosting', 'mail']),
-  userId: z.number().int().positive(),
+  customerIds: z.array(z.number().int().positive()).default([]),
 });
 
 export const UpdateSubscriptionSchema = CreateSubscriptionSchema.partial().refine(

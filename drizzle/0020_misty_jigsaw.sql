@@ -1,0 +1,1 @@
+CREATE INDEX "contracts_file_name_idx" ON "contracts" USING btree ("file_name");

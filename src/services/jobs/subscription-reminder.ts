@@ -3,6 +3,7 @@ import { and, eq, or } from 'drizzle-orm';
 
 import { env } from '../../config/env.js';
 import { db } from '../../db/index.js';
+import { subscriptionsToCustomers } from '../../db/schema/subscription-customer-junction.js';
 import { subscriptionCustomers } from '../../db/schema/subscription-customer.js';
 import { subscriptions } from '../../db/schema/subscription.js';
 import { sendEmail } from '../../utils/send-email.js';
@@ -33,8 +34,15 @@ export const subscriptionReminder = async () => {
       endDate: subscriptions.endDate,
       subscriptionType: subscriptions.subscriptionType,
     })
-    .from(subscriptionCustomers)
-    .innerJoin(subscriptions, eq(subscriptionCustomers.id, subscriptions.userId))
+    .from(subscriptions)
+    .innerJoin(
+      subscriptionsToCustomers,
+      eq(subscriptions.id, subscriptionsToCustomers.subscriptionId),
+    )
+    .innerJoin(
+      subscriptionCustomers,
+      eq(subscriptionsToCustomers.customerId, subscriptionCustomers.id),
+    )
     .where(whereClause);
 
   let emailsSent = 0;
@@ -52,21 +60,32 @@ export const subscriptionReminder = async () => {
         await sendEmail({ to: customer.email, subject });
         emailsSent++;
 
-        smsMessages.push({ msg: subject, no: customer.phone! });
+        if (customer.phone) {
+          smsMessages.push({ msg: subject, no: customer.phone });
+        } else {
+          getLogger().warn(`Skipping SMS for customer ${customer.email}: phone number is missing`);
+        }
       } else if (customer.remindExpiryWithEmail) {
         await sendEmail({ to: customer.email, subject });
         emailsSent++;
-      } else {
-        smsMessages.push({ msg: subject, no: customer.phone! });
+      } else if (customer.remindExpiryWithSms) {
+        if (customer.phone) {
+          smsMessages.push({ msg: subject, no: customer.phone });
+        } else {
+          getLogger().warn(`Skipping SMS for customer ${customer.email}: phone number is missing`);
+        }
       }
     } catch (error) {
-      getLogger().error(error, `Failed to send e-mail reminder to ${customer.email}`);
+      getLogger().error(error, `Failed to send reminder to ${customer.email}`);
     }
   }
-  try {
-    await sendRestSms({ messages: smsMessages, msgheader: env.NETGSM_HEADER });
-  } catch (error) {
-    getLogger().error(error, 'An error occurred while sending SMS messages');
+  if (smsMessages.length > 0) {
+    try {
+      await sendRestSms({ messages: smsMessages, msgheader: env.NETGSM_HEADER });
+    } catch (error) {
+      getLogger().error(error, 'An error occurred while sending SMS messages');
+      // Don't throw - we still want to return the email count even if SMS fails
+    }
   }
   return { emailsSent, smsSent: smsMessages.length };
 };

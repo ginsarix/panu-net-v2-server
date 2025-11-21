@@ -1,10 +1,13 @@
+import 'dotenv/config';
+import './instrument.js';
 import compress from '@fastify/compress';
 import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import fastifyCors from '@fastify/cors';
 import fastifySession from '@mgcrea/fastify-session';
 import RedisStore from '@mgcrea/fastify-session-redis-store';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
-import 'dotenv/config';
+import * as Sentry from '@sentry/node';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
 import cron from 'node-cron';
@@ -35,7 +38,7 @@ if (env.NODE_ENV === 'production') {
   });
 }
 
-const fastify = Fastify({
+export const fastify = Fastify({
   logger:
     env.NODE_ENV === 'development'
       ? {
@@ -51,6 +54,8 @@ const fastify = Fastify({
           stream: logStream,
         },
 });
+
+Sentry.setupFastifyErrorHandler(fastify);
 
 await fastify.register(fastifyCors, {
   origin: env.CORS_ORIGIN || 'http://localhost:5173',
@@ -73,6 +78,13 @@ fastify.addHook('onReady', () => {
 
 await fastify.register(fastifyCookie);
 
+await fastify.register(fastifyMultipart, {
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+    files: 1,
+  },
+});
+
 await fastify.register(fastifySession, {
   key: Buffer.from(env.SESSION_KEY, 'base64'),
   store: new RedisStore({
@@ -88,6 +100,8 @@ await fastify.register(fastifySession, {
   },
 });
 
+fastify.register(import('./router/file.js'));
+
 fastify.register(fastifyTRPCPlugin, {
   prefix: '/trpc',
   trpcOptions: {
@@ -95,6 +109,17 @@ fastify.register(fastifyTRPCPlugin, {
     createContext,
     onError({ path, error }: { path: string | undefined; error: Error | string }) {
       fastify.log.error(error, `Error in tRPC handler on path '${path}'`);
+      Sentry.captureMessage(typeof error === 'string' ? error : error.message, {
+        level: 'error',
+        tags: {
+          trpcPath: path,
+        },
+        contexts: {
+          trpc: {
+            path,
+          },
+        },
+      });
     },
   } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
 });

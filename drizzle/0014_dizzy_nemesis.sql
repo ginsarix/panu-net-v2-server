@@ -1,0 +1,1 @@
+ALTER TABLE "subscription_customers" ALTER COLUMN "customer_code" SET DATA TYPE varchar(255);

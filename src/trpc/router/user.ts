@@ -16,12 +16,7 @@ import { usersToPageRoles } from '../../db/schema/user-page-role.js';
 import { users } from '../../db/schema/user.js';
 import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.js';
 import { authorizedProcedure, router } from '../index.js';
-
-const stripSensitive = (user: typeof users.$inferSelect) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password, ...rest } = user;
-  return rest;
-};
+import { stripSensitive } from '../../utils/parsing.js';
 
 export const userRouter = router({
   getUsers: authorizedProcedure

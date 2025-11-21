@@ -5,8 +5,8 @@ import type { Redis } from 'ioredis';
 import { customAlphabet } from 'nanoid';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
-
 import { saltRounds } from '../../constants/auth.js';
+import { emailVerificationTemplate } from '../../constants/email.js';
 import {
   emailInvalidMessage,
   passwordAtleast8CharactersMessage,
@@ -21,6 +21,7 @@ import type { RedisResetPasswordContext } from '../../types/redis-reset-password
 import { generateRandomHex } from '../../utils/crypto.js';
 import { sendEmail } from '../../utils/send-email.js';
 import { protectedProcedure, publicProcedure, router } from '../index.js';
+import { stripSensitive } from '../../utils/parsing.js';
 
 const generateOtp = customAlphabet('0123456789', 6);
 
@@ -42,7 +43,7 @@ const sendOtpEmail = async (to: string, code: string) =>
     to,
     subject: 'E-posta Doğrulama',
     text: `E-posta doğrulama kodunuz: ${code}`,
-    html: `<h3>${code}</h3> <br> <p>E-posta doğrulama kodunuz yukarıda yazmaktadır, eğer bunu siz istemediyseniz yönetici ile iletişime geçin</p>`,
+    html: emailVerificationTemplate(code),
   });
 
 const checkOtpAttempts = async (redis: Redis, key: string) => {
@@ -283,6 +284,42 @@ export const authRouter = router({
         });
       }
     }),
+  changePassword: protectedProcedure
+    .input(
+      z.object({
+        currentPassword: z.string().min(8, passwordAtleast8CharactersMessage),
+        newPassword: z.string().min(8, passwordAtleast8CharactersMessage),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const [user] = await db.select().from(users).where(eq(users.id, +ctx.user.id));
+        if (!user) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Kullanıcı bulunamadı',
+          });
+        }
+        const passwordCorrect = await bcrypt.compare(input.currentPassword, user.password);
+        if (!passwordCorrect) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'Parola yanlış.',
+          });
+        }
+        const hashedNewPassword = await bcrypt.hash(input.newPassword, saltRounds);
+        await db.update(users).set({ password: hashedNewPassword }).where(eq(users.id, user.id));
+
+        return { message: 'Parola başarıyla değiştirildi.' };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        ctx.req.log.error(error, 'Error during changing password');
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: serverErrorMessage,
+        });
+      }
+    }),
   logout: protectedProcedure
     .input(z.object({ deviceToken: z.string().optional() }).optional())
     .mutation(async ({ input, ctx }) => {
@@ -304,9 +341,14 @@ export const authRouter = router({
         });
       }
     }),
-  getLogin: publicProcedure.query(({ ctx }) => {
+  getLogin: publicProcedure.query(async ({ ctx }) => {
     try {
-      return ctx.req.session.get('login');
+      const login = ctx.req.session.get('login');
+      if (login) {
+        await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, +login.id));
+        return stripSensitive((await db.select().from(users).where(eq(users.id, +login.id)))[0]);
+      }
+      return null;
     } catch (error) {
       if (error instanceof TRPCError) throw error;
 
