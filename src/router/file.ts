@@ -17,6 +17,7 @@ import path from 'node:path';
 import { fileHashes } from '../db/schema/fileHashes.js';
 import { createHash } from 'node:crypto';
 import type { MultipartValue } from '@fastify/multipart';
+import { directoryTraversalAttemptDetectedMessage } from '../constants/messages.js';
 
 export default function (fastify: FastifyInstance) {
   fastify.post('/file/upload', async (req, res) => {
@@ -139,7 +140,7 @@ export default function (fastify: FastifyInstance) {
       if (error instanceof FilenameValidationError) {
         if (error.statusCode === 403) {
           req.log.warn({ filename: rawFilename }, 'Directory traversal attempt detected');
-          return res.status(403).send('Sende zaten çok zekisin ya.');
+          return res.status(403).send(directoryTraversalAttemptDetectedMessage);
         }
         return res.status(error.statusCode).send(error.message);
       }
@@ -210,7 +211,7 @@ export default function (fastify: FastifyInstance) {
       if (error instanceof FilenameValidationError) {
         if (error.statusCode === 403) {
           req.log.warn({ filename: rawFilename }, 'Directory traversal attempt detected');
-          return res.status(403).send('Sende zaten çok zekisin ya.');
+          return res.status(403).send(directoryTraversalAttemptDetectedMessage);
         }
         return res.status(error.statusCode).send(error.message);
       }

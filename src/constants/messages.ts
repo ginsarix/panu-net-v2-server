@@ -26,3 +26,7 @@ export const badRequestMessage = 'Geçersiz istek.';
 export const serverErrorMessage = 'Sunucu hatası.';
 export const unauthorizedErrorMessage = 'Bu işlemi yapmak için yetkiniz yoktur.';
 export const noCompanyAccessMessage = 'Bu şirkete erişim yetkiniz yoktur.';
+
+// 🤓
+export const directoryTraversalAttemptDetectedMessage =
+  'Maalesef yetkilendirme koşullarımız gereği, yalnızca geçerli kara büyü sertifikasına sahip kullanıcıların bu alana erişimine izin verilebilmektedir.';

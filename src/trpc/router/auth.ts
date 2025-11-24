@@ -208,9 +208,11 @@ export const authRouter = router({
         const otpIdentifier = uuid();
         const redisKey = `passwordResetVerification:${otpIdentifier}`;
         const verificationCode = generateOtp();
+
+        const hashedNewPassword = await bcrypt.hash(input.newPassword, saltRounds);
         const redisValue: RedisResetPasswordContext = {
           email: input.email,
-          newPassword: input.newPassword,
+          newPassword: hashedNewPassword,
           verificationCode,
         };
 
@@ -260,11 +262,9 @@ export const authRouter = router({
         const resetPasswordContext = JSON.parse(redisValue) as RedisResetPasswordContext;
 
         if (resetPasswordContext.verificationCode === input.verificationCode.trim()) {
-          const hashedNewPassword = await bcrypt.hash(resetPasswordContext.newPassword, saltRounds);
-
           await db
             .update(users)
-            .set({ password: hashedNewPassword })
+            .set({ password: resetPasswordContext.newPassword })
             .where(eq(users.email, resetPasswordContext.email));
         } else {
           await redis.incr(attemptsKey);

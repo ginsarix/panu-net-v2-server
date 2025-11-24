@@ -346,6 +346,12 @@ export const companyRouter = router({
         }
 
         ctx.req.session.set('selectedCompanyId', input.id);
+
+        // the selected period code is set to 0 (which the DIA web service interprets as the default)
+        // to prevent the selection of potential non-existenting periods. e.g, the user selects the 8th period in a company,
+        // but when they switch to a different company that previously selected period doesn't exist in the company they just selected,
+        // so the safe approach is to set it to 0 and let it fallback to default.
+        ctx.req.session.set('selectedPeriodCode', 0);
         await ctx.req.session.save();
 
         return { message: 'Şirket başarıyla seçildi.' };
@@ -407,9 +413,10 @@ export const companyRouter = router({
       }
     }),
 
-  getSelectedPeriod: protectedProcedure.query(({ ctx }) => {
+  getSelectedPeriod: protectedProcedure.query(({ ctx }): { code: number | undefined } => {
     try {
-      return { code: ctx.req.session.get('selectedPeriodCode') };
+      const code = ctx.req.session.get('selectedPeriodCode');
+      return { code };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
       ctx.req.log.error(error, 'An error occurred while getting company periods');
