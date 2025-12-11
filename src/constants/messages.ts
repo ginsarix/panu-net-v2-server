@@ -30,3 +30,5 @@ export const noCompanyAccessMessage = 'Bu şirkete erişim yetkiniz yoktur.';
 // 🤓
 export const directoryTraversalAttemptDetectedMessage =
   'Maalesef yetkilendirme koşullarımız gereği, yalnızca geçerli kara büyü sertifikasına sahip kullanıcıların bu alana erişimine izin verilebilmektedir.';
+
+export const definitionNotFoundMessage = 'Tanım bulunamadı.';

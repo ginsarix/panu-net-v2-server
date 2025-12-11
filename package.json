@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "tsx watch src/index.ts",
     "dev:worker": "tsx watch src/services/queue-system/workers/subscription-expiry-worker.ts",
     "dev:debug": "tsx --inspect-brk src/index.ts",

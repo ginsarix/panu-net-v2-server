@@ -60,7 +60,6 @@ export function validateAndSanitizeFilename(
   filename: string | undefined,
   filesDir?: string,
 ): { sanitizedFilename: string; filePath: string; filesDir: string } {
-  // basic filename validation
   if (!filename || typeof filename !== 'string') {
     throw new FilenameValidationError('Invalid filename', 400);
   }

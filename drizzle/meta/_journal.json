@@ -211,6 +211,27 @@
       "when": 1763632887784,
       "tag": "0029_watery_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1763992550453,
+      "tag": "0030_ordinary_emma_frost",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1764146718798,
+      "tag": "0031_greedy_omega_flight",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1764152791056,
+      "tag": "0032_parched_ricochet",
+      "breakpoints": true
     }
   ]
 }
