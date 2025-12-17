@@ -232,6 +232,13 @@
       "when": 1764152791056,
       "tag": "0032_parched_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1765968952848,
+      "tag": "0033_acoustic_owl",
+      "breakpoints": true
     }
   ]
 }

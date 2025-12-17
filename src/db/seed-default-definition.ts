@@ -31,7 +31,7 @@ export const seedDefaultDefinitionScript = async () => {
 
     const currentDefinitionCount = await db.$count(currentDefinition);
     if (!currentDefinitionCount) {
-      await db.insert(currentDefinition).values({ definitionId: definitionId! });
+      await db.insert(currentDefinition).values({ id: 1, definitionId: definitionId! });
       console.info('Default current definition seeded ✅');
     } else {
       console.info('Default current definition already seeded');

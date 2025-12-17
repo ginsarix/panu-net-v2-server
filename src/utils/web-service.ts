@@ -120,7 +120,7 @@ export const constructGetBankReceipts = (
   params?: Record<string, unknown>,
   filters?: WsFilter[],
 ) => ({
-  bcs_banka_fisi_listele: {
+  bcs_banka_fisi_listele_ayrintili: {
     session_id: sessionId,
     firma_kodu: companyCode,
     donem_kodu: periodCode,

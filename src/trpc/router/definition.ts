@@ -139,7 +139,7 @@ export const definitionRouter = router({
         // Upsert FTW!!
         await db
           .insert(currentDefinition)
-          .values({ definitionId: input.definitionId })
+          .values({ id: 1, definitionId: input.definitionId })
           .onConflictDoUpdate({
             target: currentDefinition.id,
             set: { definitionId: input.definitionId },

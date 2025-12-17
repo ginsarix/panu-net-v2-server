@@ -252,10 +252,12 @@ export interface WsGetCashAccountMovementsListResponse extends WsResponse {
 export interface WsGetBankReceiptListResponse extends WsResponse {
   result: {
     fisno: string;
+    turu: WsBankReceiptType;
+    alacak: string;
     borc: string;
     turuack: string;
-    turu: WsBankReceiptType;
     aciklama: string;
+    kalemaciklama: string;
     _cdate: string;
   }[];
 }
