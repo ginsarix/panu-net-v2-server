@@ -64,9 +64,12 @@ export type WsInvoiceType = '1' | '4' | '6' | '15' | '7' | '8' | '2' | '3' | '5'
  * - BNK: Banka Fişi
  * - GOHVL: Gonderilen Havale
  * - GEHVL: Gelen Havale
+ * - VRM: Virman
+ * - KF: Kur Farkı Fişi
+ * - ACLS: Açılış Fişi
  */
 
-export type WsBankReceiptType = 'BNK' | 'GOHVL' | 'GEHVL';
+export type WsBankReceiptType = 'BNK' | 'VRM' | 'GOHVL' | 'GEHVL' | 'KF' | 'ACLS';
 
 /**
  * Codes of turu field
@@ -252,6 +255,7 @@ export interface WsGetCashAccountMovementsListResponse extends WsResponse {
 export interface WsGetBankReceiptListResponse extends WsResponse {
   result: {
     fisno: string;
+    cariunvan: string;
     turu: WsBankReceiptType;
     alacak: string;
     borc: string;
