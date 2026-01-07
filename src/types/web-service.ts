@@ -257,6 +257,7 @@ export interface WsGetBankReceiptListResponse extends WsResponse {
     fisno: string;
     cariunvan: string;
     turu: WsBankReceiptType;
+    doviz: string;
     alacak: string;
     borc: string;
     turuack: string;

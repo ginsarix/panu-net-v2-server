@@ -152,7 +152,7 @@ export const reportRouter = router({
             result.code,
             selectedPeriodCode,
             {
-              selectedcolumns: ['fisno', 'turu', 'alacak', 'borc', 'turuack', 'aciklama', 'kalemaciklama', 'cariunvan', '_cdate'],
+              selectedcolumns: ['fisno', 'turu', 'alacak', 'borc', 'turuack', 'aciklama', 'kalemaciklama', 'cariunvan', 'doviz', '_cdate'],
             },
             filters,
           ),
