@@ -80,6 +80,8 @@ export const authRouter = router({
         });
       }
 
+      const fake2Fa = process.env.FAKE_2FA === 'true';
+
       const redis = getRedis();
       let needsOtp = true;
       if (input.deviceToken) {
@@ -87,7 +89,6 @@ export const authRouter = router({
         const deviceUserId = await redis.get(deviceKey);
 
         if (deviceUserId === String(user.id)) {
-          await redis.del(deviceKey);
           needsOtp = false;
         }
       }
@@ -105,12 +106,13 @@ export const authRouter = router({
           role: user.role as 'user' | 'admin',
         });
         await ctx.req.session.save();
+
         return { success: true, deviceToken };
       }
 
       const otpIdentifier = uuid();
       const redisKey = `2fa:${otpIdentifier}`;
-      const verificationCode = generateOtp();
+      const verificationCode = fake2Fa ? '000000' : generateOtp();
       const redisValue = {
         id: user.id,
         name: user.name,
@@ -166,6 +168,11 @@ export const authRouter = router({
             role: twoFaContext.role,
           });
           await ctx.req.session.save();
+
+          // invalidate otp
+          await redis.del(redisKey);
+          await redis.del(attemptsKey);
+          //
 
           return { success: true, deviceToken };
         } else {
@@ -266,6 +273,11 @@ export const authRouter = router({
             .update(users)
             .set({ password: resetPasswordContext.newPassword })
             .where(eq(users.email, resetPasswordContext.email));
+
+          // invalidate otp
+          await redis.del(redisKey);
+          await redis.del(attemptsKey);
+          //
         } else {
           await redis.incr(attemptsKey);
           await redis.expire(attemptsKey, ATTEMPT_TTL);

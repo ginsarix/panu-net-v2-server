@@ -23,6 +23,12 @@ import { type AppRouter, appRouter } from './trpc/router/index.js';
 let logStream: NodeJS.WritableStream | undefined;
 
 if (env.NODE_ENV === 'production') {
+  if (process.env.FAKE_2FA === 'true') {
+    throw new Error(
+      'Prodüksiyonda FAKE_2FA aktif etmeye çalıştınız, güvenlik nedeniyle buna izin verilemez.',
+    );
+  }
+
   const path = await import('node:path');
   const fs = await import('node:fs');
 

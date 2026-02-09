@@ -251,6 +251,22 @@ export const constructGetEmployeeTally = (
   },
 });
 
+export const constructGetOrders = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_siparis_listele_ayrintili: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const sourceWithSlash = (wsSource: string) => {
   return wsSource.endsWith('/') ? wsSource : wsSource + '/';
 };

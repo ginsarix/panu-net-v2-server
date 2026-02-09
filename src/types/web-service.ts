@@ -341,3 +341,22 @@ export interface WsGetEmployeeTallyResponse extends WsResponse {
     _cdate: string;
   }[];
 }
+
+export interface WsGetOrdersResponse extends WsResponse {
+  result: {
+    fisno: string;
+    unvan: string;
+    kartaciklama: string;
+    miktar: string;
+    anabirimi: string;
+    birimfiyatidovizi: string;
+    toplamtutar: string;
+    tutari: string;
+    turuack: 'Verilen Sipariş' | 'Alınan Sipariş';
+    turu: '1' | '2';
+    onay: 'KABUL' | 'TEKLIF' | 'ANALIZ' | 'RET';
+    note: string;
+    tamamisevkedildi: 't' | 'f'; // 🙄
+    _cdate: string;
+  }[];
+}
