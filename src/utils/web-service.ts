@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { addDays, format } from 'date-fns';
 
-import { bcsEndpoint, scfEndpoint, sisEndpoint } from '../constants/endpoints.js';
+import { bcsEndpoint, perEndpoint, scfEndpoint, sisEndpoint } from '../constants/endpoints.js';
 import { badRequestMessage, notFoundMessage, serverErrorMessage } from '../constants/messages.js';
 import myAxios from '../services/api-base.js';
 import type {
@@ -235,6 +235,22 @@ export const constructGetServices = (
   },
 });
 
+export const constructGetEmployeeTally = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  per_personel_puantaj_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const sourceWithSlash = (wsSource: string) => {
   return wsSource.endsWith('/') ? wsSource : wsSource + '/';
 };
@@ -244,6 +260,8 @@ export const sourceWithSis = (wsSource: string) => sourceWithSlash(wsSource) + s
 export const sourceWithScf = (wsSource: string) => sourceWithSlash(wsSource) + scfEndpoint;
 
 export const sourceWithBcs = (wsSource: string) => sourceWithSlash(wsSource) + bcsEndpoint;
+
+export const sourceWithPer = (wsSource: string) => sourceWithSlash(wsSource) + perEndpoint;
 
 /**
  * @param errorCodeMessages If not provided, error messages will be generic

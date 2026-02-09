@@ -344,6 +344,7 @@ export const companyRouter = router({
             });
           }
         }
+        const oldSelectedCompanyId = ctx.req.session.get('selectedCompanyId');
 
         ctx.req.session.set('selectedCompanyId', input.id);
 
@@ -351,7 +352,9 @@ export const companyRouter = router({
         // to prevent the selection of potential non-existenting periods. e.g, the user selects the 8th period in a company,
         // but when they switch to a different company that previously selected period doesn't exist in the company they just selected,
         // so the safe approach is to set it to 0 and let it fallback to default.
-        ctx.req.session.set('selectedPeriodCode', 0);
+        if (oldSelectedCompanyId && oldSelectedCompanyId !== input.id)
+          ctx.req.session.set('selectedPeriodCode', 0);
+
         await ctx.req.session.save();
 
         return { message: 'Şirket başarıyla seçildi.' };

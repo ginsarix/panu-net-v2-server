@@ -11,6 +11,7 @@ import { userRouter } from './user.js';
 import { contractRouter } from './contract.js';
 import { stockRouter } from './stock.js';
 import { definitionRouter } from './definition.js';
+import { workHoursRouter } from './work-hours.js';
 
 export const appRouter = router({
   user: userRouter,
@@ -25,6 +26,7 @@ export const appRouter = router({
   contract: contractRouter,
   stock: stockRouter,
   definitions: definitionRouter,
+  workHours: workHoursRouter,
 });
 
 export type AppRouter = typeof appRouter;

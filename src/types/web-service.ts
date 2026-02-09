@@ -329,3 +329,15 @@ export interface WsGetServicesResponse extends WsResponse {
     birimadi: string;
   }[];
 }
+
+export interface WsGetEmployeeTallyResponse extends WsResponse {
+  result: {
+    personeladisoyadi: string;
+    personelsicilno: string;
+    normalmesaisaat: string;
+    toplamfazlamesaisaat: string;
+    gecemesaisisaat: string;
+    haftasonumesaisisaat: string;
+    _cdate: string;
+  }[];
+}

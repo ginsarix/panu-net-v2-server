@@ -9,6 +9,7 @@ export const PAGE_ROLE_KEYS = {
   CONTRACT_VIEW: 'contract_view',
   STOCKS_VIEW: 'stocks_view',
   SERVICES_VIEW: 'services_view',
+  WORK_HOURS_VIEW: 'work_hours_view',
 } as const;
 
 export type PageRoleKey = (typeof PAGE_ROLE_KEYS)[keyof typeof PAGE_ROLE_KEYS];
@@ -69,4 +70,10 @@ export const PAGE_ROLE_DEFINITIONS: PageRoleDefinition[] = [
     description: 'Hizmetler sayfasına erişim yetkisi',
     pagePath: '/stocks/service-list',
   },
+  {
+    key: PAGE_ROLE_KEYS.WORK_HOURS_VIEW,
+    name: 'Mesai saatleri',
+    description: 'Mesai saatleri sayfasına erişim yetkisi',
+    pagePath: '/work-hours/'
+  }
 ];
