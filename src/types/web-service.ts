@@ -171,6 +171,7 @@ export interface WsGetWaybillListResponse extends WsResponse {
     indirimtutari: string;
     toplamtutar: string;
     _cdate: string;
+    __fatura: 'F' | '-';
   }[];
 }
 

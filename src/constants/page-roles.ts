@@ -11,6 +11,7 @@ export const PAGE_ROLE_KEYS = {
   SERVICES_VIEW: 'services_view',
   WORK_HOURS_VIEW: 'work_hours_view',
   ORDERS_VIEW: 'orders_view',
+  WAYBILL_VIEW: 'waybill_view',
 } as const;
 
 export type PageRoleKey = (typeof PAGE_ROLE_KEYS)[keyof typeof PAGE_ROLE_KEYS];
@@ -82,5 +83,11 @@ export const PAGE_ROLE_DEFINITIONS: PageRoleDefinition[] = [
     name: 'Siparişler',
     description: 'Siparişler sayfasına erişim yetkisi',
     pagePath: '/orders/',
+  },
+  {
+    key: PAGE_ROLE_KEYS.WAYBILL_VIEW,
+    name: 'İrsaliyeler',
+    description: 'İrsaliyeler sayfasına erişim yetkisi',
+    pagePath: '/waybills/',
   },
 ];
