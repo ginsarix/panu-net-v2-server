@@ -239,6 +239,20 @@
       "when": 1765968952848,
       "tag": "0033_acoustic_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1772198328165,
+      "tag": "0034_colossal_karnak",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1772450109895,
+      "tag": "0035_busy_the_renegades",
+      "breakpoints": true
     }
   ]
 }

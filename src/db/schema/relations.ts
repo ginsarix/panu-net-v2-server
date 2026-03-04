@@ -9,6 +9,8 @@ import { usersToCompanies } from './user-company.js';
 import { usersToPageRoles } from './user-page-role.js';
 import { users } from './user.js';
 import { contracts } from './contracts.js';
+import { tickets } from './tickets.js';
+import { ticketMessages } from './ticketMessages.js';
 
 export const usersRelations = relations(users, ({ many }) => ({
   usersToCompanies: many(usersToCompanies),
@@ -69,5 +71,39 @@ export const usersToPageRolesRelations = relations(usersToPageRoles, ({ one }) =
   pageRole: one(pageRoles, {
     fields: [usersToPageRoles.pageRoleId],
     references: [pageRoles.id],
+  }),
+}));
+
+export const usersTicketsRelations = relations(users, ({ many }) => ({
+  createdTickets: many(tickets),
+}));
+
+export const companiesTicketsRelations = relations(companies, ({ many }) => ({
+  tickets: many(tickets),
+}));
+
+export const ticketsRelations = relations(tickets, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [tickets.createdByUserId],
+    references: [users.id],
+  }),
+
+  company: one(companies, {
+    fields: [tickets.belongingCompanyId],
+    references: [companies.id],
+  }),
+
+  messages: many(ticketMessages),
+}));
+
+export const ticketMessagesRelations = relations(ticketMessages, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [ticketMessages.ticketId],
+    references: [tickets.id],
+  }),
+
+  author: one(users, {
+    fields: [ticketMessages.authorUserId],
+    references: [users.id],
   }),
 }));

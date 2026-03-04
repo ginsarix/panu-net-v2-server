@@ -8,6 +8,8 @@ import { usersToPageRoles } from './user-page-role.js';
 import { users } from './user.js';
 import { fileHashes } from './fileHashes.js';
 import { contracts } from './contracts.js';
+import { tickets } from './tickets.js';
+import { ticketMessages } from './ticketMessages.js';
 
 export const schema = {
   users,
@@ -20,4 +22,6 @@ export const schema = {
   usersToPageRoles,
   fileHashes,
   contracts,
+  tickets,
+  ticketMessages,
 };

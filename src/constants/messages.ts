@@ -6,10 +6,10 @@ export const userIdRequiredMessage = "Kullanıcı ID'si gereklidir.";
 export const userNotFoundMessage = 'Kullanıcı bulunamadı.';
 export const couldntFetchUsersMessage = 'Kullanıcılar getirilemedi.';
 
-export const companyIdRequiredMessage = "Şirket ID'si gereklidir.";
-export const companyNotFoundMessage = 'Şirket bulunamadı';
-export const selectedCompanyNotFoundMessage = 'Seçili şirket bulunamadı.';
-export const couldntFetchCompaniesMessage = 'Şirketler getirilemedi.';
+export const companyIdRequiredMessage = 'Firmanın seçili olması gereklidir.';
+export const companyNotFoundMessage = 'Firma bulunamadı';
+export const selectedCompanyNotFoundMessage = 'Seçili firma bulunamadı.';
+export const couldntFetchCompaniesMessage = 'Firmalar getirilemedi.';
 
 export const requiredFieldMessage = 'Bu alan gereklidir.';
 export const nameRequiredMessage = 'İsim gereklidir.';
@@ -25,7 +25,7 @@ export const notFoundMessage = 'Veri bulunamadı.';
 export const badRequestMessage = 'Geçersiz istek.';
 export const serverErrorMessage = 'Sunucu hatası.';
 export const unauthorizedErrorMessage = 'Bu işlemi yapmak için yetkiniz yoktur.';
-export const noCompanyAccessMessage = 'Bu şirkete erişim yetkiniz yoktur.';
+export const noCompanyAccessMessage = 'Bu firmaya erişim yetkiniz yoktur.';
 
 // 🤓
 export const directoryTraversalAttemptDetectedMessage =
