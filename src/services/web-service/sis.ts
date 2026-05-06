@@ -8,6 +8,7 @@ import {
 } from '../../constants/messages.js';
 import myAxios from '../../services/api-base.js';
 import { creditCountEmitter } from '../../services/credit-count-emitter.js';
+import { getCompanyById } from '../companiesDb.js';
 import { getLogger } from '../../services/logger.js';
 import type {
   WsGetCreditCountResponse,
@@ -22,7 +23,6 @@ import {
   constructPing,
   sourceWithSis,
 } from '../../utils/web-service.js';
-import { getCompanyById } from '../companiesDb.js';
 
 type LoginResult = 'successfully_logged_in' | 'already_logged_in' | 'api_error';
 
@@ -68,7 +68,11 @@ export const login = async (request: FastifyRequest): Promise<LoginResult> => {
   }
 };
 
-export const getPeriods = async (request: FastifyRequest, companyCode: number) => {
+export const getPeriods = async (
+  request: FastifyRequest,
+  webServiceSource: string,
+  companyCode: number,
+) => {
   const wsSessionId = request.session.get('wsSessionId');
   if (!wsSessionId) {
     throw new TRPCError({
@@ -77,25 +81,8 @@ export const getPeriods = async (request: FastifyRequest, companyCode: number) =
     });
   }
 
-  const selectedCompanyId = request.session.get('selectedCompanyId');
-
-  if (!selectedCompanyId) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'Seçili firma bulunmamaktadır.',
-    });
-  }
-
-  const [message, code, result] = await getCompanyById(selectedCompanyId);
-  if (!result) {
-    throw new TRPCError({
-      code: code || 'INTERNAL_SERVER_ERROR',
-      message: message || unexpectedErrorMessage,
-    });
-  }
-
   const response = await myAxios.post<WsGetPeriodsResponse>(
-    sourceWithSis(result.webServiceSource),
+    sourceWithSis(webServiceSource),
     constructGetPeriods(wsSessionId, companyCode, {
       selectedcolumns: ['m_donemler'],
     }),
