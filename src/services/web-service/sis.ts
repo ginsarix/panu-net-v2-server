@@ -82,7 +82,7 @@ export const getPeriods = async (request: FastifyRequest, companyCode: number) =
   if (!selectedCompanyId) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
-      message: 'Seçili şirket bulunmamaktadır.',
+      message: 'Seçili firma bulunmamaktadır.',
     });
   }
 
@@ -126,7 +126,7 @@ export const getWsCreditCount = async (request: FastifyRequest) => {
   if (!selectedCompanyId) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
-      message: 'Seçili şirket bulunmamaktadır.',
+      message: 'Seçili firma bulunmamaktadır.',
     });
   }
 

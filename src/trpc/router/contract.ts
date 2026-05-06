@@ -106,7 +106,7 @@ export const contractRouter = router({
       if (!companyId && !isAdmin) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'Şirket seçilmeden sözleşmeler alınamaz.',
+          message: 'Firma seçilmeden sözleşmeler alınamaz.',
         });
       }
 

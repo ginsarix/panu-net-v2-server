@@ -2,7 +2,7 @@
 
 ## Genel Bakış
 
-Bu sunucu, kullanıcılar, şirketler, borçlular, alacaklılar, abonelikler ve görev takibi için kapsamlı bir API sağlayan [Fastify](https://www.fastify.io/) ve [tRPC](https://trpc.io/) ile oluşturulmuş bir Node.js arka ucudur. Veri depolama için PostgreSQL ([Drizzle ORM](https://orm.drizzle.team/)), önbellekleme ve oturum yönetimi için Redis kullanır ve harici web servisleri, e-posta bildirimleri ve SMS servisleriyle entegrasyonu destekler.
+Bu sunucu, kullanıcılar, firmalar, borçlular, alacaklılar, abonelikler ve görev takibi için kapsamlı bir API sağlayan [Fastify](https://www.fastify.io/) ve [tRPC](https://trpc.io/) ile oluşturulmuş bir Node.js arka ucudur. Veri depolama için PostgreSQL ([Drizzle ORM](https://orm.drizzle.team/)), önbellekleme ve oturum yönetimi için Redis kullanır ve harici web servisleri, e-posta bildirimleri ve SMS servisleriyle entegrasyonu destekler.
 
 ---
 
@@ -27,16 +27,16 @@ Bu sunucu, kullanıcılar, şirketler, borçlular, alacaklılar, abonelikler ve 
 - Kullanıcı listeleri için **sayfalama, sıralama ve arama**
 - Kullanıcı listelerinin Redis'te **önbelleğe alınması**
 
-### 2. Şirket Yönetimi
+### 2. Firma Yönetimi
 
-- Şirketler için **CRUD işlemleri**
-- **Şirket seçme ve seçili şirketi getirme** (oturum tabanlı)
-- Şirket listeleri için **sayfalama, sıralama ve arama**
-- Şirket listelerinin Redis'te **önbelleğe alınması**
+- Firmalar için **CRUD işlemleri**
+- **Firma seçme ve seçili firmayı getirme** (oturum tabanlı)
+- Firma listeleri için **sayfalama, sıralama ve arama**
+- Firma listelerinin Redis'te **önbelleğe alınması**
 
 ### 3. Borçlu & Alacaklı Yönetimi
 
-- Seçili şirket ve dönem için **borçlu ve alacaklı listelerini çekme**
+- Seçili firma ve dönem için **borçlu ve alacaklı listelerini çekme**
 - **Harici web servisleriyle entegrasyon** (HTTP POST, oturum tabanlı kimlik doğrulama)
 - Web servisi yanıtları için **hata yönetimi**
 
@@ -60,7 +60,7 @@ Bu sunucu, kullanıcılar, şirketler, borçlular, alacaklılar, abonelikler ve 
 Tüm uç noktalar `/trpc` altında sunulmaktadır.
 
 - `/trpc/user` - Kullanıcı yönetimi
-- `/trpc/company` - Şirket yönetimi
+- `/trpc/company` - Firma yönetimi
 - `/trpc/debtor` - Borçlu verisi (harici entegrasyon)
 - `/trpc/creditor` - Alacaklı verisi (harici entegrasyon)
 - `/trpc/subscription` - Abonelik yönetimi
@@ -85,13 +85,13 @@ Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorg
 | creationDate | timestamp | Oluşturulma zamanı |
 | updatedOn    | timestamp | Son güncelleme     |
 
-### Şirketler Tablosu
+### Firmalar Tablosu
 
 | Alan               | Tip       | Açıklama                  |
 | ------------------ | --------- | ------------------------- |
 | id                 | serial    | Birincil anahtar          |
-| code               | varchar   | Şirket kodu               |
-| name               | varchar   | Şirket adı                |
+| code               | varchar   | Firma kodu               |
+| name               | varchar   | Firma adı                |
 | manager            | varchar   | Yönetici adı              |
 | phone              | varchar   | Telefon numarası          |
 | licenseDate        | timestamp | Lisans tarihi             |
@@ -135,7 +135,7 @@ Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorg
 ## Kimlik Doğrulama & Oturum Yönetimi
 
 - **Oturumlar**, Redis ile birlikte `fastify-session` kullanılarak yönetilir.
-- **Oturum verisi**, seçili şirket ve web servisi oturum kimliklerini içerir.
+- **Oturum verisi**, seçili firma ve web servisi oturum kimliklerini içerir.
 - **Parola şifreleme**, yapılandırılabilir salt round ile bcrypt kullanır.
 - **Açık bir giriş (login) uç noktası yoktur**; kimlik doğrulama muhtemelen oturum ve harici web servisi girişi ile sağlanır.
 
@@ -143,7 +143,7 @@ Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorg
 
 ## Önbellekleme
 
-- **Kullanıcı ve şirket listeleri**, performans için Redis'te önbelleğe alınır.
+- **Kullanıcı ve firma listeleri**, performans için Redis'te önbelleğe alınır.
 - **Önbellek anahtarları**, sayfalama, sıralama ve arama parametrelerine göre oluşturulur.
 - **Önbellek süresi (TTL)** yapılandırılabilir.
 
@@ -168,7 +168,7 @@ Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorg
 
 ## Harici Entegrasyonlar
 
-- **Borçlu ve alacaklı verileri**, şirket kimlik bilgileriyle harici bir web servisinden (SIS) çekilir.
+- **Borçlu ve alacaklı verileri**, firma kimlik bilgileriyle harici bir web servisinden (SIS) çekilir.
 - **Her harici istekten önce oturum tabanlı kimlik doğrulama** yapılır.
 - **Yanıtlar** ayrıştırılır ve hatalar HTTP ve iş mantığına göre yönetilir.
 - **E-posta servisi** entegrasyonu abonelik bildirimleri için
@@ -225,7 +225,7 @@ Proje, aşağıdaki teknolojilerle oluşturulmuş bir Vue.js 3 ön uç uygulamas
 
 - **KPI'lar ve hızlı erişim** ile Dashboard
 - **Kullanıcı Yönetimi** (sadece admin)
-- **Şirket Yönetimi** (sadece admin)
+- **Firma Yönetimi** (sadece admin)
 - **Harici veri entegrasyonu** ile Borçlu & Alacaklı Yönetimi
 - **Süre dolumu takibi** ile Abonelik Yönetimi
 - **Abonelik müşterileri** için Görev Takibi
@@ -237,7 +237,7 @@ Proje, aşağıdaki teknolojilerle oluşturulmuş bir Vue.js 3 ön uç uygulamas
 - **Ana Sayfa** - İstatistikler ve hızlı erişim ile Dashboard
 - **Borçlular & Alacaklılar** - Harici veri entegrasyonu
 - **Görev Takibi** - Abonelik ve müşteri yönetimi
-- **Yönetim** - Kullanıcı ve şirket yönetimi (sadece admin)
+- **Yönetim** - Kullanıcı ve firma yönetimi (sadece admin)
 - **Siparişler** - Sipariş yönetimi (planlanmış)
 - **Raporlar** - Genel raporlama işlevselliği
 

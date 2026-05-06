@@ -132,7 +132,7 @@ export const companyRouter = router({
         if (!userCompany.length)
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'Bu şirkete erişiminiz yoktur.',
+            message: 'Bu firmaya erişiminiz yoktur.',
           });
         const [message, code, result] = await getCompanyById(input.id);
 
@@ -163,14 +163,14 @@ export const companyRouter = router({
       return {
         id: createdCompany.id,
         creationDate: createdCompany.creationDate,
-        message: 'Şirket başarıyla oluşturuldu.',
+        message: 'Firma başarıyla oluşturuldu.',
       };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
       ctx.req.log.error(error, 'Failed to create company');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Şirket oluşturulurken bir hata ile karşılaşıldı.',
+        message: 'Firma oluşturulurken bir hata ile karşılaşıldı.',
       });
     }
   }),
@@ -215,13 +215,13 @@ export const companyRouter = router({
           });
         }
 
-        return { updatedOn: updatedCompanies[0].updatedOn, message: 'Şirket güncellendi.' };
+        return { updatedOn: updatedCompanies[0].updatedOn, message: 'Firma güncellendi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         ctx.req.log.error(error, 'Failed to update company');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Şirket düzenlenirken bir hata ile karşılaşıldı.',
+          message: 'Firma düzenlenirken bir hata ile karşılaşıldı.',
         });
       }
     }),
@@ -255,13 +255,13 @@ export const companyRouter = router({
           });
         }
 
-        return { message: 'Şirket silindi.' };
+        return { message: 'Firma silindi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         ctx.req.log.error(error, 'Failed to delete company');
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Şirket silinirken bir hata ile karşılaşıldı.',
+          message: 'Firma silinirken bir hata ile karşılaşıldı.',
         });
       }
     }),
@@ -275,7 +275,7 @@ export const companyRouter = router({
         if (!ids.length) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: "Şirket ID'leri gereklidir.",
+            message: "Firma ID'leri gereklidir.",
           });
         }
 
@@ -357,13 +357,13 @@ export const companyRouter = router({
 
         await ctx.req.session.save();
 
-        return { message: 'Şirket başarıyla seçildi.' };
+        return { message: 'Firma başarıyla seçildi.' };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         ctx.req.log.error(error, `Failed to select company: ${input.id}`);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Şirket seçilirken bir hata ile karşılaşıldı.',
+          message: 'Firma seçilirken bir hata ile karşılaşıldı.',
         });
       }
     }),
@@ -374,17 +374,17 @@ export const companyRouter = router({
 
       const notFoundError = new TRPCError({
         code: 'NOT_FOUND',
-        message: 'Şirket bulunamadı.',
+        message: 'Firma bulunamadı.',
       });
 
-      if (!id) return { message: 'Şirket bulunamadı.', id: null };
+      if (!id) return { message: 'Firma bulunamadı.', id: null };
 
       const company = await db.select().from(companies).where(eq(companies.id, id));
 
       if (!company.length) throw notFoundError;
 
       return {
-        message: 'Seçili şirket başarıyla getirildi.',
+        message: 'Seçili firma başarıyla getirildi.',
         id,
       };
     } catch (error) {
@@ -392,7 +392,7 @@ export const companyRouter = router({
       ctx.req.log.error(error, 'An error occurred while getting selected company');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Seçili şirket getirilirken bir hata ile karşılaşıldı.',
+        message: 'Seçili firma getirilirken bir hata ile karşılaşıldı.',
       });
     }
   }),
@@ -453,7 +453,7 @@ export const companyRouter = router({
     if (!selectedCompanyId) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
-        message: 'Seçili şirket bulunmamaktadır.',
+        message: 'Seçili firma bulunmamaktadır.',
       });
     }
 
