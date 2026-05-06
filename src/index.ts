@@ -115,17 +115,20 @@ fastify.register(fastifyTRPCPlugin, {
     createContext,
     onError({ path, error }: { path: string | undefined; error: Error | string }) {
       fastify.log.error(error, `Error in tRPC handler on path '${path}'`);
-      Sentry.captureMessage(typeof error === 'string' ? error : error.message, {
-        level: 'error',
-        tags: {
-          trpcPath: path,
-        },
-        contexts: {
-          trpc: {
-            path,
+
+      if (env.NODE_ENV === 'production') {
+        Sentry.captureMessage(typeof error === 'string' ? error : error.message, {
+          level: 'error',
+          tags: {
+            trpcPath: path,
           },
-        },
-      });
+          contexts: {
+            trpc: {
+              path,
+            },
+          },
+        });
+      }
     },
   } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
 });
