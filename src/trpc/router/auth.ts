@@ -10,7 +10,6 @@ import { emailVerificationTemplate } from '../../constants/email.js';
 import {
   emailInvalidMessage,
   passwordAtleast8CharactersMessage,
-  serverErrorMessage,
 } from '../../constants/messages.js';
 import { DEVICE_TTL, OTP_TTL } from '../../constants/redis.js';
 import { db } from '../../db/index.js';
@@ -59,136 +58,119 @@ const checkOtpAttempts = async (redis: Redis, key: string) => {
 
 export const authRouter = router({
   login: publicProcedure.input(AuthFormSchema).mutation(async ({ input, ctx }) => {
-    try {
-      const [user] = await db.select().from(users).where(eq(users.email, input.email));
+    const [user] = await db.select().from(users).where(eq(users.email, input.email));
 
-      if (!user) {
-        // prevent timing attacks
-        await bcrypt.hash('dummy', saltRounds);
-        throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: 'E-posta veya parola yanlış.',
-        });
-      }
-
-      const passwordCorrect = await bcrypt.compare(input.password, user.password);
-
-      if (!passwordCorrect) {
-        throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: 'E-posta veya parola yanlış.',
-        });
-      }
-
-      const fake2Fa = process.env.FAKE_2FA === 'true';
-
-      const redis = getRedis();
-      let needsOtp = true;
-      if (input.deviceToken) {
-        const deviceKey = `device:${input.deviceToken}`;
-        const deviceUserId = await redis.get(deviceKey);
-
-        if (deviceUserId === String(user.id)) {
-          needsOtp = false;
-        }
-      }
-
-      if (!needsOtp) {
-        const deviceToken = generateRandomHex();
-        const deviceKey = `device:${deviceToken}`;
-
-        await redis.set(deviceKey, String(user.id), 'EX', DEVICE_TTL);
-
-        ctx.req.session.set('login', {
-          id: String(user.id),
-          name: user.name,
-          email: input.email.trim().toLowerCase(),
-          role: user.role as 'user' | 'admin',
-        });
-        await ctx.req.session.save();
-
-        return { success: true, deviceToken };
-      }
-
-      const otpIdentifier = uuid();
-      const redisKey = `2fa:${otpIdentifier}`;
-      const verificationCode = fake2Fa ? '000000' : generateOtp();
-      const redisValue = {
-        id: user.id,
-        name: user.name,
-        email: input.email,
-        role: user.role,
-        verificationCode,
-      };
-      await redis.set(redisKey, JSON.stringify(redisValue), 'EX', OTP_TTL);
-
-      sendOtpEmail(input.email, verificationCode).catch((err) => {
-        ctx.req.log.error(err, 'Failed to send OTP email');
-      });
-
-      return { otpIdentifier, ttl: OTP_TTL };
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      ctx.req.log.error(error, 'Error during login');
+    if (!user) {
+      // prevent timing attacks
+      await bcrypt.hash('dummy', saltRounds);
       throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: serverErrorMessage,
+        code: 'UNAUTHORIZED',
+        message: 'E-posta veya parola yanlış.',
       });
     }
+
+    const passwordCorrect = await bcrypt.compare(input.password, user.password);
+
+    if (!passwordCorrect) {
+      throw new TRPCError({
+        code: 'UNAUTHORIZED',
+        message: 'E-posta veya parola yanlış.',
+      });
+    }
+
+    const fake2Fa = process.env.FAKE_2FA === 'true';
+
+    const redis = getRedis();
+    let needsOtp = true;
+    if (input.deviceToken) {
+      const deviceKey = `device:${input.deviceToken}`;
+      const deviceUserId = await redis.get(deviceKey);
+
+      if (deviceUserId === String(user.id)) {
+        needsOtp = false;
+      }
+    }
+
+    if (!needsOtp) {
+      const deviceToken = generateRandomHex();
+      const deviceKey = `device:${deviceToken}`;
+
+      await redis.set(deviceKey, String(user.id), 'EX', DEVICE_TTL);
+
+      ctx.req.session.set('login', {
+        id: String(user.id),
+        name: user.name,
+        email: input.email.trim().toLowerCase(),
+        role: user.role as 'user' | 'admin',
+      });
+      await ctx.req.session.save();
+
+      return { success: true, deviceToken };
+    }
+
+    const otpIdentifier = uuid();
+    const redisKey = `2fa:${otpIdentifier}`;
+    const verificationCode = fake2Fa ? '000000' : generateOtp();
+    const redisValue = {
+      id: user.id,
+      name: user.name,
+      email: input.email,
+      role: user.role,
+      verificationCode,
+    };
+    await redis.set(redisKey, JSON.stringify(redisValue), 'EX', OTP_TTL);
+
+    sendOtpEmail(input.email, verificationCode).catch((err) => {
+      ctx.req.log.error(err, 'Failed to send OTP email');
+    });
+
+    return { otpIdentifier, ttl: OTP_TTL };
   }),
+
   verifyEmail: publicProcedure
     .input(z.object({ identifier: z.string().uuid(), verificationCode: OTPSchema }))
     .mutation(async ({ input, ctx }) => {
-      try {
-        const redis = getRedis();
-        const redisKey = `2fa:${input.identifier}`;
-        const redisValue = await redis.get(redisKey);
-        if (!redisValue) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Kodun süresi doldu, lütfen tekrar giriş yapın.',
-          });
-        }
-
-        const ATTEMPT_TTL = OTP_TTL;
-        const attemptsKey = `2fa:attempts:${input.identifier}`;
-        await checkOtpAttempts(redis, attemptsKey);
-
-        const twoFaContext = JSON.parse(redisValue) as Redis2FAContext;
-        if (twoFaContext.verificationCode === input.verificationCode.trim()) {
-          const deviceToken = generateRandomHex();
-          const deviceKey = `device:${deviceToken}`;
-
-          await redis.set(deviceKey, twoFaContext.id, 'EX', DEVICE_TTL);
-
-          ctx.req.session.set('login', {
-            id: String(twoFaContext.id),
-            name: twoFaContext.name,
-            email: twoFaContext.email,
-            role: twoFaContext.role,
-          });
-          await ctx.req.session.save();
-
-          // invalidate otp
-          await redis.del(redisKey);
-          await redis.del(attemptsKey);
-          //
-
-          return { success: true, deviceToken };
-        } else {
-          await redis.incr(attemptsKey);
-          await redis.expire(attemptsKey, ATTEMPT_TTL);
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'Doğrulama kodu yanlış.',
-          });
-        }
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Error during verifying email');
+      const redis = getRedis();
+      const redisKey = `2fa:${input.identifier}`;
+      const redisValue = await redis.get(redisKey);
+      if (!redisValue) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: serverErrorMessage,
+          code: 'NOT_FOUND',
+          message: 'Kodun süresi doldu, lütfen tekrar giriş yapın.',
+        });
+      }
+
+      const ATTEMPT_TTL = OTP_TTL;
+      const attemptsKey = `2fa:attempts:${input.identifier}`;
+      await checkOtpAttempts(redis, attemptsKey);
+
+      const twoFaContext = JSON.parse(redisValue) as Redis2FAContext;
+      if (twoFaContext.verificationCode === input.verificationCode.trim()) {
+        const deviceToken = generateRandomHex();
+        const deviceKey = `device:${deviceToken}`;
+
+        await redis.set(deviceKey, twoFaContext.id, 'EX', DEVICE_TTL);
+
+        ctx.req.session.set('login', {
+          id: String(twoFaContext.id),
+          name: twoFaContext.name,
+          email: twoFaContext.email,
+          role: twoFaContext.role,
+        });
+        await ctx.req.session.save();
+
+        // invalidate otp
+        await redis.del(redisKey);
+        await redis.del(attemptsKey);
+        //
+
+        return { success: true, deviceToken };
+      } else {
+        await redis.incr(attemptsKey);
+        await redis.expire(attemptsKey, ATTEMPT_TTL);
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Doğrulama kodu yanlış.',
         });
       }
     }),
@@ -201,47 +183,38 @@ export const authRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      try {
-        const [user] = await db.select().from(users).where(eq(users.email, input.email));
+      const [user] = await db.select().from(users).where(eq(users.email, input.email));
 
-        if (!user) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Kullanıcı bulunamadı',
-          });
-        }
-
-        const redis = getRedis();
-        const otpIdentifier = uuid();
-        const redisKey = `passwordResetVerification:${otpIdentifier}`;
-        const verificationCode = generateOtp();
-
-        const hashedNewPassword = await bcrypt.hash(input.newPassword, saltRounds);
-        const redisValue: RedisResetPasswordContext = {
-          email: input.email,
-          newPassword: hashedNewPassword,
-          verificationCode,
-        };
-
-        await redis.set(redisKey, JSON.stringify(redisValue), 'EX', OTP_TTL);
-
-        setImmediate(() => {
-          sendOtpEmail(user.email, verificationCode).catch((error) => {
-            ctx.req.log.error(error, 'Error occured while sending email');
-          });
-        });
-
-        return { otpIdentifier, ttl: OTP_TTL };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-
-        ctx.req.log.error(error, 'Error in resetPasssword endpoint');
+      if (!user) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: serverErrorMessage,
+          code: 'NOT_FOUND',
+          message: 'Kullanıcı bulunamadı',
         });
       }
+
+      const redis = getRedis();
+      const otpIdentifier = uuid();
+      const redisKey = `passwordResetVerification:${otpIdentifier}`;
+      const verificationCode = generateOtp();
+
+      const hashedNewPassword = await bcrypt.hash(input.newPassword, saltRounds);
+      const redisValue: RedisResetPasswordContext = {
+        email: input.email,
+        newPassword: hashedNewPassword,
+        verificationCode,
+      };
+
+      await redis.set(redisKey, JSON.stringify(redisValue), 'EX', OTP_TTL);
+
+      setImmediate(() => {
+        sendOtpEmail(user.email, verificationCode).catch((error) => {
+          ctx.req.log.error(error, 'Error occured while sending email');
+        });
+      });
+
+      return { otpIdentifier, ttl: OTP_TTL };
     }),
+
   verifyPasswordReset: publicProcedure
     .input(
       z.object({
@@ -249,53 +222,44 @@ export const authRouter = router({
         verificationCode: OTPSchema,
       }),
     )
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const redis = getRedis();
-        const redisKey = `passwordResetVerification:${input.identifier}`;
-        const redisValue = await redis.get(redisKey);
+    .mutation(async ({ input }) => {
+      const redis = getRedis();
+      const redisKey = `passwordResetVerification:${input.identifier}`;
+      const redisValue = await redis.get(redisKey);
 
-        if (!redisValue) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Kodun süresi doldu, lütfen yeni kod alın.',
-          });
-        }
-
-        const ATTEMPT_TTL = OTP_TTL;
-        const attemptsKey = `passwordResetVerification:attempts:${input.identifier}`;
-        await checkOtpAttempts(redis, attemptsKey);
-
-        const resetPasswordContext = JSON.parse(redisValue) as RedisResetPasswordContext;
-
-        if (resetPasswordContext.verificationCode === input.verificationCode.trim()) {
-          await db
-            .update(users)
-            .set({ password: resetPasswordContext.newPassword })
-            .where(eq(users.email, resetPasswordContext.email));
-
-          // invalidate otp
-          await redis.del(redisKey);
-          await redis.del(attemptsKey);
-          //
-        } else {
-          await redis.incr(attemptsKey);
-          await redis.expire(attemptsKey, ATTEMPT_TTL);
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'Doğrulama kodu yanlış.',
-          });
-        }
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-
-        ctx.req.log.error(error, 'Error during verifying password reset');
+      if (!redisValue) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: serverErrorMessage,
+          code: 'NOT_FOUND',
+          message: 'Kodun süresi doldu, lütfen yeni kod alın.',
+        });
+      }
+
+      const ATTEMPT_TTL = OTP_TTL;
+      const attemptsKey = `passwordResetVerification:attempts:${input.identifier}`;
+      await checkOtpAttempts(redis, attemptsKey);
+
+      const resetPasswordContext = JSON.parse(redisValue) as RedisResetPasswordContext;
+
+      if (resetPasswordContext.verificationCode === input.verificationCode.trim()) {
+        await db
+          .update(users)
+          .set({ password: resetPasswordContext.newPassword })
+          .where(eq(users.email, resetPasswordContext.email));
+
+        // invalidate otp
+        await redis.del(redisKey);
+        await redis.del(attemptsKey);
+        //
+      } else {
+        await redis.incr(attemptsKey);
+        await redis.expire(attemptsKey, ATTEMPT_TTL);
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Doğrulama kodu yanlış.',
         });
       }
     }),
+
   changePassword: protectedProcedure
     .input(
       z.object({
@@ -304,71 +268,44 @@ export const authRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      try {
-        const [user] = await db.select().from(users).where(eq(users.id, +ctx.user.id));
-        if (!user) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Kullanıcı bulunamadı',
-          });
-        }
-        const passwordCorrect = await bcrypt.compare(input.currentPassword, user.password);
-        if (!passwordCorrect) {
-          throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: 'Parola yanlış.',
-          });
-        }
-        const hashedNewPassword = await bcrypt.hash(input.newPassword, saltRounds);
-        await db.update(users).set({ password: hashedNewPassword }).where(eq(users.id, user.id));
-
-        return { message: 'Parola başarıyla değiştirildi.' };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Error during changing password');
+      const [user] = await db.select().from(users).where(eq(users.id, +ctx.user.id));
+      if (!user) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: serverErrorMessage,
+          code: 'NOT_FOUND',
+          message: 'Kullanıcı bulunamadı',
         });
       }
+      const passwordCorrect = await bcrypt.compare(input.currentPassword, user.password);
+      if (!passwordCorrect) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Parola yanlış.',
+        });
+      }
+      const hashedNewPassword = await bcrypt.hash(input.newPassword, saltRounds);
+      await db.update(users).set({ password: hashedNewPassword }).where(eq(users.id, user.id));
+
+      return { message: 'Parola başarıyla değiştirildi.' };
     }),
+
   logout: protectedProcedure
     .input(z.object({ deviceToken: z.string().optional() }).optional())
     .mutation(async ({ input, ctx }) => {
-      try {
-        if (input?.deviceToken) {
-          const redis = getRedis();
-          const deviceKey = `device:${input.deviceToken}`;
-          await redis.del(deviceKey);
-        }
-
-        await ctx.req.session.destroy();
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-
-        ctx.req.log.error(error, 'Error during logout');
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: serverErrorMessage,
-        });
+      if (input?.deviceToken) {
+        const redis = getRedis();
+        const deviceKey = `device:${input.deviceToken}`;
+        await redis.del(deviceKey);
       }
+
+      await ctx.req.session.destroy();
     }),
-  getLogin: publicProcedure.query(async ({ ctx }) => {
-    try {
-      const login = ctx.req.session.get('login');
-      if (login) {
-        await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, +login.id));
-        return stripSensitive((await db.select().from(users).where(eq(users.id, +login.id)))[0]);
-      }
-      return null;
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
 
-      ctx.req.log.error(error, 'Error while getting login');
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: serverErrorMessage,
-      });
+  getLogin: publicProcedure.query(async ({ ctx }) => {
+    const login = ctx.req.session.get('login');
+    if (login) {
+      await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, +login.id));
+      return stripSensitive((await db.select().from(users).where(eq(users.id, +login.id)))[0]);
     }
+    return null;
   }),
 });

@@ -13,60 +13,50 @@ import { pageRoleProtectedProcedure, router } from '../index.js';
 
 export const debtorRouter = router({
   getDebtors: pageRoleProtectedProcedure('DEBTOR_VIEW').query(async ({ ctx }) => {
-    try {
-      await login(ctx.req);
+    await login(ctx.req);
 
-      const [message, code, result] = await getCompanyById(
-        ctx.req.session.get('selectedCompanyId')!,
-      );
+    const [message, code, result] = await getCompanyById(
+      ctx.req.session.get('selectedCompanyId')!,
+    );
 
-      if (!result) {
-        throw new TRPCError({
-          code: code || 'INTERNAL_SERVER_ERROR',
-          message: message || unexpectedErrorMessage,
-        });
-      }
-
-      const debtors = await getAccountCards(
-        sourceWithScf(result.webServiceSource),
-        ctx.req.session.get('wsSessionId')!,
-        result.code,
-        ctx.req.session.get('selectedPeriodCode'),
-        '(B)',
-        {
-          selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
-        },
-        [isActiveFilter],
-      );
-
-      const responseMsg = debtors.data.msg;
-
-      handleErrorCodes(debtors.data.code, {
-        notFound: responseMsg,
-        badRequest: responseMsg,
-        internalServerError: responseMsg,
-      });
-
-      // Emit credit count change event after web service call
-      try {
-        await getWsCreditCount(ctx.req);
-      } catch (error) {
-        // Log but don't fail if credit count fetch fails
-        ctx.req.log.error(error, 'Failed to fetch credit count after getDebtors');
-      }
-
-      return {
-        message: responseMsg,
-        payload: debtors.data,
-      };
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
-
-      ctx.req.log.error(error, 'Failed to get debtors');
+    if (!result) {
       throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Borçlu cariler getirilirken bir hata ile karşılaşıldı.',
+        code: code || 'INTERNAL_SERVER_ERROR',
+        message: message || unexpectedErrorMessage,
       });
     }
+
+    const debtors = await getAccountCards(
+      sourceWithScf(result.webServiceSource),
+      ctx.req.session.get('wsSessionId')!,
+      result.code,
+      ctx.req.session.get('selectedPeriodCode'),
+      '(B)',
+      {
+        selectedcolumns: ['carikartkodu', 'unvan', 'dovizturu', 'bakiye'],
+      },
+      [isActiveFilter],
+    );
+
+    const responseMsg = debtors.data.msg;
+
+    handleErrorCodes(debtors.data.code, {
+      notFound: responseMsg,
+      badRequest: responseMsg,
+      internalServerError: responseMsg,
+    });
+
+    // Emit credit count change event after web service call
+    try {
+      await getWsCreditCount(ctx.req);
+    } catch (error) {
+      // Log but don't fail if credit count fetch fails
+      ctx.req.log.error(error, 'Failed to fetch credit count after getDebtors');
+    }
+
+    return {
+      message: responseMsg,
+      payload: debtors.data,
+    };
   }),
 });

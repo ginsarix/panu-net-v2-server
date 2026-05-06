@@ -23,51 +23,33 @@ export const ticketRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const userId = Number(ctx.user.id);
-        const companyId = ctx.req.session.get('selectedCompanyId');
+      const userId = Number(ctx.user.id);
+      const companyId = ctx.req.session.get('selectedCompanyId');
 
-        if (!companyId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: companyIdRequiredMessage,
-          });
-        }
-
-        const [createdTicket] = await db
-          .insert(tickets)
-          .values({ ...input, createdByUserId: userId, belongingCompanyId: companyId })
-          .returning();
-
-        return {
-          createdTicket,
-          message: 'Destek talebi başarıyla oluşturuldu',
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to open ticket');
+      if (!companyId) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Destek talebi açılırken bir hata ile karşılaşıldı.',
+          code: 'BAD_REQUEST',
+          message: companyIdRequiredMessage,
         });
       }
+
+      const [createdTicket] = await db
+        .insert(tickets)
+        .values({ ...input, createdByUserId: userId, belongingCompanyId: companyId })
+        .returning();
+
+      return {
+        createdTicket,
+        message: 'Destek talebi başarıyla oluşturuldu',
+      };
     }),
 
   deleteTicket: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ ctx, input }) => {
-      try {
-        await db.delete(tickets).where(eq(tickets.id, input.id));
+    .mutation(async ({ input }) => {
+      await db.delete(tickets).where(eq(tickets.id, input.id));
 
-        return { message: 'Destek talebi başarıyla silindi' };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to delete ticket');
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Destek talebine silerken bir hata ile karşılaşıldı.',
-        });
-      }
+      return { message: 'Destek talebi başarıyla silindi' };
     }),
 
   setTicketState: authorizedProcedure
@@ -77,22 +59,13 @@ export const ticketRouter = router({
         state: z.enum(['in_process', 'completed']),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      try {
-        await db
-          .update(tickets)
-          .set({ ticketState: input.state })
-          .where(eq(tickets.id, input.ticketId));
+    .mutation(async ({ input }) => {
+      await db
+        .update(tickets)
+        .set({ ticketState: input.state })
+        .where(eq(tickets.id, input.ticketId));
 
-        return { message: 'Destek talebi durumu başarıyla değiştirildi' };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to set ticket state');
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Destek talebi durumunu düzenlerken bir hata ile karşılaşıldı.',
-        });
-      }
+      return { message: 'Destek talebi durumu başarıyla değiştirildi' };
     }),
 
   addTicketMessage: protectedProcedure
@@ -103,55 +76,46 @@ export const ticketRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const companyId = ctx.req.session.get('selectedCompanyId');
+      const companyId = ctx.req.session.get('selectedCompanyId');
 
-        if (ctx.user.role !== 'admin' && !companyId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: companyIdRequiredMessage,
-          });
-        }
-
-        const [ticket] = await db
-          .select()
-          .from(tickets)
-          .where(
-            ctx.user.role !== 'admin'
-              ? and(eq(tickets.id, input.ticketId), eq(tickets.belongingCompanyId, companyId!))
-              : eq(tickets.id, input.ticketId),
-          );
-
-        if (!ticket) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Destek talebi bulunamadı' });
-        }
-
-        const userId = Number(ctx.user.id);
-
-        const [createdTicketMessage] = await db
-          .insert(ticketMessages)
-          .values({ ...input, authorUserId: userId })
-          .returning();
-
-        if (ticket.ticketState === 'completed') {
-          await db
-            .update(tickets)
-            .set({ ticketState: 'reopened' })
-            .where(eq(tickets.id, input.ticketId));
-        }
-
-        return {
-          createdTicketMessage,
-          message: 'Mesaj başarıyla eklendi',
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to add ticket message');
+      if (ctx.user.role !== 'admin' && !companyId) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Destek talebine mesaj eklerken bir hata ile karşılaşıldı.',
+          code: 'BAD_REQUEST',
+          message: companyIdRequiredMessage,
         });
       }
+
+      const [ticket] = await db
+        .select()
+        .from(tickets)
+        .where(
+          ctx.user.role !== 'admin'
+            ? and(eq(tickets.id, input.ticketId), eq(tickets.belongingCompanyId, companyId!))
+            : eq(tickets.id, input.ticketId),
+        );
+
+      if (!ticket) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Destek talebi bulunamadı' });
+      }
+
+      const userId = Number(ctx.user.id);
+
+      const [createdTicketMessage] = await db
+        .insert(ticketMessages)
+        .values({ ...input, authorUserId: userId })
+        .returning();
+
+      if (ticket.ticketState === 'completed') {
+        await db
+          .update(tickets)
+          .set({ ticketState: 'reopened' })
+          .where(eq(tickets.id, input.ticketId));
+      }
+
+      return {
+        createdTicketMessage,
+        message: 'Mesaj başarıyla eklendi',
+      };
     }),
 
   getTickets: protectedProcedure
@@ -163,62 +127,53 @@ export const ticketRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      try {
-        const companyId = ctx.req.session.get('selectedCompanyId');
+      const companyId = ctx.req.session.get('selectedCompanyId');
 
-        if (ctx.user.role !== 'admin' && !companyId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: companyIdRequiredMessage,
-          });
-        }
-
-        const offset = (input.page - 1) * input.limit;
-
-        const whereConditions: SQL[] = [];
-
-        if (ctx.user.role !== 'admin') {
-          // we're already sure companyId is not undef cuz we are checking it for non-admins and this runs only if user is non-admin
-          whereConditions.push(eq(tickets.belongingCompanyId, companyId!));
-        }
-
-        if (input.priority) whereConditions.push(eq(tickets.priority, input.priority));
-        if (input.state) whereConditions.push(eq(tickets.ticketState, input.state));
-        if (input.search) whereConditions.push(ilike(tickets.title, `%${input.search}%`));
-
-        const [data, [{ total }]] = await Promise.all([
-          db
-            .select({
-              ticket: tickets,
-              user: {
-                id: users.id,
-                name: users.name,
-              },
-            })
-            .from(tickets)
-            .leftJoin(users, eq(users.id, tickets.createdByUserId))
-            .where(whereConditions.length ? and(...whereConditions) : undefined)
-            .orderBy(desc(tickets.creationDate))
-            .limit(input.limit)
-            .offset(offset),
-          db
-            .select({ total: count() })
-            .from(tickets)
-            .where(whereConditions.length ? and(...whereConditions) : undefined),
-        ]);
-
-        return {
-          data,
-          total,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to get tickets');
+      if (ctx.user.role !== 'admin' && !companyId) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Destek talepleri getirilirken bir hata ile karşılaşıldı.',
+          code: 'BAD_REQUEST',
+          message: companyIdRequiredMessage,
         });
       }
+
+      const offset = (input.page - 1) * input.limit;
+
+      const whereConditions: SQL[] = [];
+
+      if (ctx.user.role !== 'admin') {
+        // we're already sure companyId is not undef cuz we are checking it for non-admins and this runs only if user is non-admin
+        whereConditions.push(eq(tickets.belongingCompanyId, companyId!));
+      }
+
+      if (input.priority) whereConditions.push(eq(tickets.priority, input.priority));
+      if (input.state) whereConditions.push(eq(tickets.ticketState, input.state));
+      if (input.search) whereConditions.push(ilike(tickets.title, `%${input.search}%`));
+
+      const [data, [{ total }]] = await Promise.all([
+        db
+          .select({
+            ticket: tickets,
+            user: {
+              id: users.id,
+              name: users.name,
+            },
+          })
+          .from(tickets)
+          .leftJoin(users, eq(users.id, tickets.createdByUserId))
+          .where(whereConditions.length ? and(...whereConditions) : undefined)
+          .orderBy(desc(tickets.creationDate))
+          .limit(input.limit)
+          .offset(offset),
+        db
+          .select({ total: count() })
+          .from(tickets)
+          .where(whereConditions.length ? and(...whereConditions) : undefined),
+      ]);
+
+      return {
+        data,
+        total,
+      };
     }),
 
   getTicketMessages: protectedProcedure
@@ -228,71 +183,62 @@ export const ticketRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      try {
-        const { ticketId, page, limit } = input;
+      const { ticketId, page, limit } = input;
 
-        const companyId = ctx.req.session.get('selectedCompanyId');
+      const companyId = ctx.req.session.get('selectedCompanyId');
 
-        if (ctx.user.role !== 'admin' && !companyId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: companyIdRequiredMessage,
-          });
-        }
-
-        const [ticket] = await db
-          .select({
-            title: tickets.title,
-            description: tickets.description,
-            status: tickets.ticketState,
-          })
-          .from(tickets)
-          .where(
-            ctx.user.role !== 'admin'
-              ? and(eq(tickets.id, ticketId), eq(tickets.belongingCompanyId, companyId!))
-              : eq(tickets.id, ticketId),
-          );
-
-        if (!ticket) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Destek talebi bulunamadı' });
-        }
-
-        const offset = (page - 1) * limit;
-
-        const [data, [{ total }]] = await Promise.all([
-          db
-            .select({
-              ticketMessage: ticketMessages,
-              user: {
-                id: users.id,
-                name: users.name,
-                role: users.role,
-              },
-            })
-            .from(ticketMessages)
-            .leftJoin(users, eq(users.id, ticketMessages.authorUserId))
-            .where(eq(ticketMessages.ticketId, ticketId))
-            .orderBy(asc(ticketMessages.creationDate))
-            .limit(limit)
-            .offset(offset),
-          db
-            .select({ total: count() })
-            .from(ticketMessages)
-            .where(eq(ticketMessages.ticketId, ticketId)),
-        ]);
-
-        return {
-          ticket,
-          data,
-          total,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to get ticket messages');
+      if (ctx.user.role !== 'admin' && !companyId) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Destek talebi mesajları getirilirken bir hata ile karşılaşıldı.',
+          code: 'BAD_REQUEST',
+          message: companyIdRequiredMessage,
         });
       }
+
+      const [ticket] = await db
+        .select({
+          title: tickets.title,
+          description: tickets.description,
+          status: tickets.ticketState,
+        })
+        .from(tickets)
+        .where(
+          ctx.user.role !== 'admin'
+            ? and(eq(tickets.id, ticketId), eq(tickets.belongingCompanyId, companyId!))
+            : eq(tickets.id, ticketId),
+        );
+
+      if (!ticket) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Destek talebi bulunamadı' });
+      }
+
+      const offset = (page - 1) * limit;
+
+      const [data, [{ total }]] = await Promise.all([
+        db
+          .select({
+            ticketMessage: ticketMessages,
+            user: {
+              id: users.id,
+              name: users.name,
+              role: users.role,
+            },
+          })
+          .from(ticketMessages)
+          .leftJoin(users, eq(users.id, ticketMessages.authorUserId))
+          .where(eq(ticketMessages.ticketId, ticketId))
+          .orderBy(asc(ticketMessages.creationDate))
+          .limit(limit)
+          .offset(offset),
+        db
+          .select({ total: count() })
+          .from(ticketMessages)
+          .where(eq(ticketMessages.ticketId, ticketId)),
+      ]);
+
+      return {
+        ticket,
+        data,
+        total,
+      };
     }),
 });

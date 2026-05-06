@@ -4,11 +4,7 @@ import { asc, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { saltRounds } from '../../constants/auth.js';
-import {
-  couldntFetchUsersMessage,
-  emailAlreadyExistsMessage,
-  userNotFoundMessage,
-} from '../../constants/messages.js';
+import { emailAlreadyExistsMessage, userNotFoundMessage } from '../../constants/messages.js';
 import { DEFAULT_ITEMS_PER_PAGE } from '../../constants/pagination.js';
 import { db } from '../../db/index.js';
 import { usersToCompanies } from '../../db/schema/user-company.js';
@@ -38,167 +34,140 @@ export const userRouter = router({
         search: z.string().max(256).default(''),
       }),
     )
-    .query(async ({ input, ctx }) => {
-      try {
-        const { page, itemsPerPage, sortBy, search } = input;
+    .query(async ({ input }) => {
+      const { page, itemsPerPage, sortBy, search } = input;
 
-        const skip = (page - 1) * itemsPerPage;
+      const skip = (page - 1) * itemsPerPage;
 
-        const sortableColumns = {
-          creationDate: users.creationDate,
-          updatedOn: users.updatedOn,
-          name: users.name,
-          email: users.email,
-        } as const;
+      const sortableColumns = {
+        creationDate: users.creationDate,
+        updatedOn: users.updatedOn,
+        name: users.name,
+        email: users.email,
+      } as const;
 
-        const sortColumn = sortableColumns[sortBy[0].key as keyof typeof sortableColumns];
-        const sortFn = sortBy[0].order === 'asc' ? asc : desc;
-        const whereClause = search ? ilike(users.name, `%${search}%`) : undefined;
+      const sortColumn = sortableColumns[sortBy[0].key as keyof typeof sortableColumns];
+      const sortFn = sortBy[0].order === 'asc' ? asc : desc;
+      const whereClause = search ? ilike(users.name, `%${search}%`) : undefined;
 
-        const [fetchedUsers, totalCount] = await Promise.all([
-          await db
-            .select()
-            .from(users)
-            .where(whereClause)
-            .orderBy(sortFn(sortColumn))
-            .offset(skip)
-            .limit(itemsPerPage),
-          db.$count(users),
-        ]);
+      const [fetchedUsers, totalCount] = await Promise.all([
+        await db
+          .select()
+          .from(users)
+          .where(whereClause)
+          .orderBy(sortFn(sortColumn))
+          .offset(skip)
+          .limit(itemsPerPage),
+        db.$count(users),
+      ]);
 
-        const userIds = fetchedUsers.map((user) => user.id);
-        const userCompanies =
-          userIds.length > 0
-            ? await db
-                .select({
-                  userId: usersToCompanies.userId,
-                  companyId: usersToCompanies.companyId,
-                })
-                .from(usersToCompanies)
-                .where(inArray(usersToCompanies.userId, userIds))
-            : [];
+      const userIds = fetchedUsers.map((user) => user.id);
+      const userCompanies =
+        userIds.length > 0
+          ? await db
+              .select({
+                userId: usersToCompanies.userId,
+                companyId: usersToCompanies.companyId,
+              })
+              .from(usersToCompanies)
+              .where(inArray(usersToCompanies.userId, userIds))
+          : [];
 
-        const companyIdsByUser = userCompanies.reduce(
-          (acc, { userId, companyId }) => {
-            if (!acc[userId]) {
-              acc[userId] = [];
-            }
-            acc[userId].push(companyId);
-            return acc;
-          },
-          {} as Record<number, number[]>,
-        );
+      const companyIdsByUser = userCompanies.reduce(
+        (acc, { userId, companyId }) => {
+          if (!acc[userId]) {
+            acc[userId] = [];
+          }
+          acc[userId].push(companyId);
+          return acc;
+        },
+        {} as Record<number, number[]>,
+      );
 
-        const userPageRoles =
-          userIds.length > 0
-            ? await db
-                .select({
-                  userId: usersToPageRoles.userId,
-                  pageRoleId: usersToPageRoles.pageRoleId,
-                })
-                .from(usersToPageRoles)
-                .where(inArray(usersToPageRoles.userId, userIds))
-            : [];
+      const userPageRoles =
+        userIds.length > 0
+          ? await db
+              .select({
+                userId: usersToPageRoles.userId,
+                pageRoleId: usersToPageRoles.pageRoleId,
+              })
+              .from(usersToPageRoles)
+              .where(inArray(usersToPageRoles.userId, userIds))
+          : [];
 
-        const pageRoleIdsByUser = userPageRoles.reduce(
-          (acc, { userId, pageRoleId }) => {
-            if (!acc[userId]) {
-              acc[userId] = [];
-            }
-            acc[userId].push(pageRoleId);
-            return acc;
-          },
-          {} as Record<number, number[]>,
-        );
+      const pageRoleIdsByUser = userPageRoles.reduce(
+        (acc, { userId, pageRoleId }) => {
+          if (!acc[userId]) {
+            acc[userId] = [];
+          }
+          acc[userId].push(pageRoleId);
+          return acc;
+        },
+        {} as Record<number, number[]>,
+      );
 
-        const result = fetchedUsers.map((user) => ({
-          ...stripSensitive(user),
-          companyIds: companyIdsByUser[user.id] || [],
-          pageRoleIds: pageRoleIdsByUser[user.id] || [],
-        }));
+      const result = fetchedUsers.map((user) => ({
+        ...stripSensitive(user),
+        companyIds: companyIdsByUser[user.id] || [],
+        pageRoleIds: pageRoleIdsByUser[user.id] || [],
+      }));
 
-        return {
-          users: result,
-          total: totalCount,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to fetch users');
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: couldntFetchUsersMessage,
-        });
-      }
+      return {
+        users: result,
+        total: totalCount,
+      };
     }),
 
   getUser: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .query(async ({ input, ctx }) => {
-      try {
-        const [user] = await db.select().from(users).where(eq(users.id, input.id));
+    .query(async ({ input }) => {
+      const [user] = await db.select().from(users).where(eq(users.id, input.id));
 
-        if (!user) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: userNotFoundMessage,
-          });
-        }
-
-        return stripSensitive(user);
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to fetch user');
+      if (!user) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: couldntFetchUsersMessage,
+          code: 'NOT_FOUND',
+          message: userNotFoundMessage,
         });
       }
+
+      return stripSensitive(user);
     }),
 
-  createUser: authorizedProcedure.input(CreateUserSchema).mutation(async ({ input, ctx }) => {
-    try {
-      const emailAlreadyExists = (await db.select().from(users).where(eq(users.email, input.email)))
-        .length;
+  createUser: authorizedProcedure.input(CreateUserSchema).mutation(async ({ input }) => {
+    const emailAlreadyExists = (await db.select().from(users).where(eq(users.email, input.email)))
+      .length;
 
-      if (emailAlreadyExists) {
-        throw new TRPCError({
-          code: 'CONFLICT',
-          message: emailAlreadyExistsMessage,
-        });
-      }
-
-      input.password = await bcrypt.hash(input.password, saltRounds);
-
-      const [createdUser] = await db
-        .insert(users)
-        .values(input)
-        .returning({ id: users.id, creationDate: users.creationDate });
-
-      const relationValues = input.companies.map((c) => ({ userId: createdUser.id, companyId: c }));
-
-      if (relationValues.length) await db.insert(usersToCompanies).values(relationValues);
-
-      if (input.pageRoles && input.pageRoles.length > 0) {
-        const pageRoleValues = input.pageRoles.map((roleId) => ({
-          userId: createdUser.id,
-          pageRoleId: roleId,
-        }));
-        await db.insert(usersToPageRoles).values(pageRoleValues);
-      }
-
-      return {
-        message: 'Kullanıcı başarıyla oluşturuldu.',
-        id: createdUser.id,
-        creationDate: createdUser.creationDate,
-      };
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      ctx.req.log.error(error, 'Failed to create user');
+    if (emailAlreadyExists) {
       throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Kullanıcı oluşturulurken bir hata ile karşılaşıldı.',
+        code: 'CONFLICT',
+        message: emailAlreadyExistsMessage,
       });
     }
+
+    input.password = await bcrypt.hash(input.password, saltRounds);
+
+    const [createdUser] = await db
+      .insert(users)
+      .values(input)
+      .returning({ id: users.id, creationDate: users.creationDate });
+
+    const relationValues = input.companies.map((c) => ({ userId: createdUser.id, companyId: c }));
+
+    if (relationValues.length) await db.insert(usersToCompanies).values(relationValues);
+
+    if (input.pageRoles && input.pageRoles.length > 0) {
+      const pageRoleValues = input.pageRoles.map((roleId) => ({
+        userId: createdUser.id,
+        pageRoleId: roleId,
+      }));
+      await db.insert(usersToPageRoles).values(pageRoleValues);
+    }
+
+    return {
+      message: 'Kullanıcı başarıyla oluşturuldu.',
+      id: createdUser.id,
+      creationDate: createdUser.creationDate,
+    };
   }),
 
   updateUser: authorizedProcedure
@@ -208,160 +177,133 @@ export const userRouter = router({
         data: UpdateUserSchema,
       }),
     )
-    .mutation(async ({ input, ctx }) => {
-      try {
-        if (input.data.email) {
-          const emailAlreadyExists = (
-            await db.select().from(users).where(eq(users.email, input.data.email))
-          ).length;
+    .mutation(async ({ input }) => {
+      if (input.data.email) {
+        const emailAlreadyExists = (
+          await db.select().from(users).where(eq(users.email, input.data.email))
+        ).length;
 
-          if (emailAlreadyExists) {
-            throw new TRPCError({
-              code: 'CONFLICT',
-              message: emailAlreadyExistsMessage,
-            });
-          }
-        }
-
-        if (input.data.password) {
-          input.data.password = await bcrypt.hash(input.data.password, saltRounds);
-        }
-
-        const editedUsers = await db
-          .update(users)
-          .set(input.data)
-          .where(eq(users.id, input.id))
-          .returning({ id: users.id, updatedOn: users.updatedOn });
-
-        if (!editedUsers.length) {
+        if (emailAlreadyExists) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: userNotFoundMessage,
+            code: 'CONFLICT',
+            message: emailAlreadyExistsMessage,
           });
         }
+      }
 
-        if (input.data.companies !== undefined) {
-          await db.delete(usersToCompanies).where(eq(usersToCompanies.userId, input.id));
+      if (input.data.password) {
+        input.data.password = await bcrypt.hash(input.data.password, saltRounds);
+      }
 
-          const relationValues = input.data.companies.map((c) => ({
-            userId: input.id,
-            companyId: c,
-          }));
+      const editedUsers = await db
+        .update(users)
+        .set(input.data)
+        .where(eq(users.id, input.id))
+        .returning({ id: users.id, updatedOn: users.updatedOn });
 
-          if (relationValues.length) {
-            await db.insert(usersToCompanies).values(relationValues);
-          }
-        }
-
-        if (input.data.pageRoles !== undefined) {
-          await db.delete(usersToPageRoles).where(eq(usersToPageRoles.userId, input.id));
-
-          if (input.data.pageRoles.length > 0) {
-            const pageRoleValues = input.data.pageRoles.map((roleId) => ({
-              userId: input.id,
-              pageRoleId: roleId,
-            }));
-            await db.insert(usersToPageRoles).values(pageRoleValues);
-          }
-        }
-
-        return {
-          message: 'Kullanıcı güncellendi.',
-          updatedOn: editedUsers[0].updatedOn!,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to update user');
+      if (!editedUsers.length) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Kullanıcı düzenlenirken bir hata ile karşılaşıldı.',
+          code: 'NOT_FOUND',
+          message: userNotFoundMessage,
         });
       }
+
+      if (input.data.companies !== undefined) {
+        await db.delete(usersToCompanies).where(eq(usersToCompanies.userId, input.id));
+
+        const relationValues = input.data.companies.map((c) => ({
+          userId: input.id,
+          companyId: c,
+        }));
+
+        if (relationValues.length) {
+          await db.insert(usersToCompanies).values(relationValues);
+        }
+      }
+
+      if (input.data.pageRoles !== undefined) {
+        await db.delete(usersToPageRoles).where(eq(usersToPageRoles.userId, input.id));
+
+        if (input.data.pageRoles.length > 0) {
+          const pageRoleValues = input.data.pageRoles.map((roleId) => ({
+            userId: input.id,
+            pageRoleId: roleId,
+          }));
+          await db.insert(usersToPageRoles).values(pageRoleValues);
+        }
+      }
+
+      return {
+        message: 'Kullanıcı güncellendi.',
+        updatedOn: editedUsers[0].updatedOn!,
+      };
     }),
 
   deleteUser: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const [user] = await db.select().from(users).where(eq(users.id, input.id));
+    .mutation(async ({ input }) => {
+      const [user] = await db.select().from(users).where(eq(users.id, input.id));
 
-        if (!user) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: userNotFoundMessage,
-          });
-        }
-
-        const result = await db.delete(users).where(eq(users.id, user.id));
-
-        if (!result.rowCount) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: userNotFoundMessage,
-          });
-        }
-
-        return { message: 'Kullanıcı silindi.' };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'Failed to delete user');
+      if (!user) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Kullanıcı silinirken bir hata ile karşılaşıldı.',
+          code: 'NOT_FOUND',
+          message: userNotFoundMessage,
         });
       }
+
+      const result = await db.delete(users).where(eq(users.id, user.id));
+
+      if (!result.rowCount) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: userNotFoundMessage,
+        });
+      }
+
+      return { message: 'Kullanıcı silindi.' };
     }),
 
   deleteUsers: authorizedProcedure
     .input(z.object({ ids: z.array(z.number().int().positive()) }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const { ids } = input;
+    .mutation(async ({ input }) => {
+      const { ids } = input;
 
-        if (!ids.length) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: "Kullanıcı ID'leri gereklidir.",
-          });
-        }
-
-        const existingUsers = await db
-          .select({ id: users.id })
-          .from(users)
-          .where(inArray(users.id, ids));
-
-        const existingIds = new Set(existingUsers.map((u) => u.id));
-
-        const result = await db.delete(users).where(inArray(users.id, ids));
-
-        if (!result.rowCount) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: userNotFoundMessage,
-          });
-        }
-
-        const results = ids.map((id) => ({
-          id,
-          status: existingIds.has(id),
-          message: existingIds.has(id) ? 'Kullanıcı silindi' : 'Kullanıcı bulunamadı',
-        }));
-
-        return {
-          message:
-            result.rowCount !== ids.length
-              ? 'Bazı kullanıcılar silindi, bazıları bulunamadı.'
-              : 'Silme operasyonu hatasız geçti',
-          deletedRows: result.rowCount,
-          results,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        ctx.req.log.error(error, 'An error occurred while deleting users');
+      if (!ids.length) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Kullanıcılar silinirken bir hata ile karşılaşıldı.',
+          code: 'BAD_REQUEST',
+          message: "Kullanıcı ID'leri gereklidir.",
         });
       }
+
+      const existingUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, ids));
+
+      const existingIds = new Set(existingUsers.map((u) => u.id));
+
+      const result = await db.delete(users).where(inArray(users.id, ids));
+
+      if (!result.rowCount) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: userNotFoundMessage,
+        });
+      }
+
+      const results = ids.map((id) => ({
+        id,
+        status: existingIds.has(id),
+        message: existingIds.has(id) ? 'Kullanıcı silindi' : 'Kullanıcı bulunamadı',
+      }));
+
+      return {
+        message:
+          result.rowCount !== ids.length
+            ? 'Bazı kullanıcılar silindi, bazıları bulunamadı.'
+            : 'Silme operasyonu hatasız geçti',
+        deletedRows: result.rowCount,
+        results,
+      };
     }),
 });
