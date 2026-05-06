@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.json && npm run sentry:sourcemaps",
     "dev": "tsx watch src/index.ts",
     "dev:worker": "tsx watch src/services/queue-system/workers/subscription-expiry-worker.ts",
     "dev:debug": "tsx --inspect-brk src/index.ts",
@@ -16,7 +16,8 @@
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "drizzle-kit migrate",
     "drizzle:studio": "drizzle-kit studio",
-    "drizzle:migrate:with-ts": "node scripts/drizzle-migrate-with-ts-imports.js"
+    "drizzle:migrate:with-ts": "node scripts/drizzle-migrate-with-ts-imports.js",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org panu-teknoloji --project panu-net-v2-server ./dist && sentry-cli sourcemaps upload --org panu-teknoloji --project panu-net-v2-server ./dist"
   },
   "keywords": [],
   "author": "Can Komusdogan",
@@ -30,6 +31,7 @@
     "@mgcrea/fastify-session": "^2.4.1",
     "@mgcrea/fastify-session-redis-store": "^1.0.0",
     "@netgsm/sms": "^1.1.10",
+    "@sentry/cli": "^2.58.5",
     "@sentry/node": "^10.25.0",
     "@sentry/profiling-node": "^10.25.0",
     "@trpc/server": "^11.4.2",

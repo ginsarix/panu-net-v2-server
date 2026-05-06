@@ -16,3 +16,5 @@ files/**
 
 # But keep all directories (so Git can track empty folders)
 !files/**/
+# Sentry Config File
+.sentryclirc

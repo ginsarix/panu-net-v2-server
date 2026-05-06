@@ -12,8 +12,14 @@
     "sourceMap": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "inlineSources": true,
+
+    // Set `sourceRoot` to  "/" to strip the build path prefix
+    // from generated source code references.
+    // This improves issue grouping in Sentry.
+    "sourceRoot": "/",
   },
   "include": ["src/**/*", "global.d.ts", "eslint.config.ts", "drizzle.config.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
 }
