@@ -2,6 +2,7 @@ node_modules/
 .env
 .env.*
 dist/
+dist-no-map/
 
 *.pem
 *.csr
@@ -18,3 +19,5 @@ files/**
 !files/**/
 # Sentry Config File
 .sentryclirc
+
+.DS_Store
