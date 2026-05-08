@@ -18,9 +18,7 @@ export const orderRouter = router({
   getOrders: pageRoleProtectedProcedure('ORDERS_VIEW').query(async ({ ctx }) => {
     await login(ctx.req);
 
-    const [message, code, result] = await getCompanyById(
-      ctx.req.session.get('selectedCompanyId')!,
-    );
+    const [message, code, result] = await getCompanyById(ctx.req.session.get('selectedCompanyId')!);
 
     if (!result) {
       throw new TRPCError({
@@ -48,6 +46,7 @@ export const orderRouter = router({
           'turu',
           'onay',
           'note',
+          'depo',
           'tamamisevkedildi',
           '_cdate',
         ],
@@ -181,7 +180,9 @@ export const orderRouter = router({
           </body>
         </html>`;
 
-      void Promise.all(targetUsers.map((user) => sendEmail({ to: user.email, subject: 'Sipariş Listesi', html })));
+      void Promise.all(
+        targetUsers.map((user) => sendEmail({ to: user.email, subject: 'Sipariş Listesi', html })),
+      );
 
       return {
         message: `Sipariş listesi ${targetUsers.length} kullanıcıya gönderildi.`,
