@@ -319,6 +319,7 @@ export interface WsGetCheckEntriesListResponse extends WsResponse {
     bankadi: string;
     borclu: string;
     turu: WsCheckEntryType;
+    turu_txt: string;
     _cdate: string;
   }[];
 }

@@ -244,6 +244,7 @@ export const reportRouter = router({
               'bankaadi',
               'borclu',
               'turu',
+              'turu_txt',
               '_cdate',
             ],
           },
