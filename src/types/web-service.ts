@@ -297,6 +297,17 @@ export interface WsGetMaterialReceiptListResponse extends WsResponse {
   }[];
 }
 
+/**
+ * Codes of turu field
+ *
+ * Possible values:
+ * - CEK_KND: (Öntanımlı) Kendi Çekimiz
+ * - CEK_MST: Müşteri Çeki
+ * - SNT_KND: Kendi Senedimiz
+ * - SNT_MST: Müşteri Senedi
+ */
+export type WsCheckEntryType = 'CEK_KND' | 'CEK_MST' | 'SNT_KND' | 'SNT_MST';
+
 export interface WsGetCheckEntriesListResponse extends WsResponse {
   result: {
     bordrono: string;
@@ -307,6 +318,7 @@ export interface WsGetCheckEntriesListResponse extends WsResponse {
     aciklama: string;
     bankadi: string;
     borclu: string;
+    turu: WsCheckEntryType;
     _cdate: string;
   }[];
 }
