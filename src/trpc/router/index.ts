@@ -15,6 +15,7 @@ import { workHoursRouter } from './work-hours.js';
 import { orderRouter } from './order.js';
 import { waybillRouter } from './waybill.js';
 import { ticketRouter } from './ticket.js';
+import { eventLogRouter } from './event-log.js';
 
 export const appRouter = router({
   user: userRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   orders: orderRouter,
   waybill: waybillRouter,
   ticket: ticketRouter,
+  eventLog: eventLogRouter,
 });
 
 export type AppRouter = typeof appRouter;

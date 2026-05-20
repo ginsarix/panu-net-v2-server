@@ -20,6 +20,7 @@ import type { RedisResetPasswordContext } from '../../types/redis-reset-password
 import { generateRandomHex } from '../../utils/crypto.js';
 import { sendEmail } from '../../utils/send-email.js';
 import { protectedProcedure, publicProcedure, router } from '../index.js';
+import { logEvent } from '../../utils/event-log.js';
 import { stripSensitive } from '../../utils/parsing.js';
 
 const generateOtp = customAlphabet('0123456789', 6);
@@ -63,6 +64,14 @@ export const authRouter = router({
     if (!user) {
       // prevent timing attacks
       await bcrypt.hash('dummy', saltRounds);
+      logEvent({
+        resourceType: 'oturum',
+        action: 'giriş başarısız - kullanıcı bulunamadı',
+        actorId: null,
+        status: 'başarısız',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       throw new TRPCError({
         code: 'UNAUTHORIZED',
         message: 'E-posta veya parola yanlış.',
@@ -72,6 +81,14 @@ export const authRouter = router({
     const passwordCorrect = await bcrypt.compare(input.password, user.password);
 
     if (!passwordCorrect) {
+      logEvent({
+        resourceType: 'oturum',
+        action: 'giriş başarısız - yanlış parola',
+        actorId: user.id,
+        status: 'başarısız',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       throw new TRPCError({
         code: 'UNAUTHORIZED',
         message: 'E-posta veya parola yanlış.',
@@ -105,6 +122,14 @@ export const authRouter = router({
       });
       await ctx.req.session.save();
 
+      logEvent({
+        resourceType: 'oturum',
+        action: 'giriş yapıldı',
+        actorId: user.id,
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { success: true, deviceToken };
     }
 
@@ -134,6 +159,14 @@ export const authRouter = router({
       const redisKey = `2fa:${input.identifier}`;
       const redisValue = await redis.get(redisKey);
       if (!redisValue) {
+        logEvent({
+          resourceType: 'oturum',
+          action: 'giriş başarısız - OTP süresi doldu',
+          actorId: null,
+          status: 'başarısız',
+          ipAddress: ctx.req.ip,
+          userAgent: ctx.req.headers['user-agent'] ?? null,
+        });
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Kodun süresi doldu, lütfen tekrar giriş yapın.',
@@ -142,9 +175,21 @@ export const authRouter = router({
 
       const ATTEMPT_TTL = OTP_TTL;
       const attemptsKey = `2fa:attempts:${input.identifier}`;
-      await checkOtpAttempts(redis, attemptsKey);
-
       const twoFaContext = JSON.parse(redisValue) as Redis2FAContext;
+
+      try {
+        await checkOtpAttempts(redis, attemptsKey);
+      } catch {
+        logEvent({
+          resourceType: 'oturum',
+          action: 'giriş başarısız - maksimum OTP denemesi aşıldı',
+          actorId: Number(twoFaContext.id),
+          status: 'başarısız',
+          ipAddress: ctx.req.ip,
+          userAgent: ctx.req.headers['user-agent'] ?? null,
+        });
+      }
+
       if (twoFaContext.verificationCode === input.verificationCode.trim()) {
         const deviceToken = generateRandomHex();
         const deviceKey = `device:${deviceToken}`;
@@ -164,6 +209,14 @@ export const authRouter = router({
         await redis.del(attemptsKey);
         //
 
+        logEvent({
+          resourceType: 'oturum',
+          action: 'giriş yapıldı',
+          actorId: Number(twoFaContext.id),
+          status: 'başarılı',
+          ipAddress: ctx.req.ip,
+          userAgent: ctx.req.headers['user-agent'] ?? null,
+        });
         return { success: true, deviceToken };
       } else {
         await redis.incr(attemptsKey);
@@ -222,12 +275,20 @@ export const authRouter = router({
         verificationCode: OTPSchema,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const redis = getRedis();
       const redisKey = `passwordResetVerification:${input.identifier}`;
       const redisValue = await redis.get(redisKey);
 
       if (!redisValue) {
+        logEvent({
+          resourceType: 'kullanıcı',
+          action: 'parola sıfırlama başarısız - OTP süresi doldu',
+          actorId: null,
+          status: 'başarısız',
+          ipAddress: ctx.req.ip,
+          userAgent: ctx.req.headers['user-agent'] ?? null,
+        });
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Kodun süresi doldu, lütfen yeni kod alın.',
@@ -250,9 +311,26 @@ export const authRouter = router({
         await redis.del(redisKey);
         await redis.del(attemptsKey);
         //
+
+        logEvent({
+          resourceType: 'kullanıcı',
+          action: 'parola sıfırlandı',
+          actorId: null,
+          status: 'başarılı',
+          ipAddress: ctx.req.ip,
+          userAgent: ctx.req.headers['user-agent'] ?? null,
+        });
       } else {
         await redis.incr(attemptsKey);
         await redis.expire(attemptsKey, ATTEMPT_TTL);
+        logEvent({
+          resourceType: 'kullanıcı',
+          action: 'parola sıfırlama başarısız - yanlış OTP',
+          actorId: null,
+          status: 'başarısız',
+          ipAddress: ctx.req.ip,
+          userAgent: ctx.req.headers['user-agent'] ?? null,
+        });
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Doğrulama kodu yanlış.',
@@ -285,6 +363,15 @@ export const authRouter = router({
       const hashedNewPassword = await bcrypt.hash(input.newPassword, saltRounds);
       await db.update(users).set({ password: hashedNewPassword }).where(eq(users.id, user.id));
 
+      logEvent({
+        resourceType: 'kullanıcı',
+        resourceId: String(user.id),
+        action: 'parola değiştirildi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Parola başarıyla değiştirildi.' };
     }),
 
@@ -297,6 +384,14 @@ export const authRouter = router({
         await redis.del(deviceKey);
       }
 
+      logEvent({
+        resourceType: 'oturum',
+        action: 'çıkış yapıldı',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       await ctx.req.session.destroy();
     }),
 

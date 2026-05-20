@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { authorizedProcedure, protectedProcedure, router } from '../index.js';
+import { logEvent } from '../../utils/event-log.js';
 import { z } from 'zod';
 import { db } from '../../db/index.js';
 import { tickets } from '../../db/schema/tickets.js';
@@ -38,6 +39,15 @@ export const ticketRouter = router({
         .values({ ...input, createdByUserId: userId, belongingCompanyId: companyId })
         .returning();
 
+      logEvent({
+        resourceType: 'destek talebi',
+        resourceId: String(createdTicket.id),
+        action: 'oluşturuldu',
+        actorId: userId,
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return {
         createdTicket,
         message: 'Destek talebi başarıyla oluşturuldu',
@@ -46,9 +56,18 @@ export const ticketRouter = router({
 
   deleteTicket: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       await db.delete(tickets).where(eq(tickets.id, input.id));
 
+      logEvent({
+        resourceType: 'destek talebi',
+        resourceId: String(input.id),
+        action: 'silindi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Destek talebi başarıyla silindi' };
     }),
 
@@ -59,12 +78,21 @@ export const ticketRouter = router({
         state: z.enum(['in_process', 'completed']),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       await db
         .update(tickets)
         .set({ ticketState: input.state })
         .where(eq(tickets.id, input.ticketId));
 
+      logEvent({
+        resourceType: 'destek talebi',
+        resourceId: String(input.ticketId),
+        action: 'durum güncellendi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Destek talebi durumu başarıyla değiştirildi' };
     }),
 
@@ -112,6 +140,15 @@ export const ticketRouter = router({
           .where(eq(tickets.id, input.ticketId));
       }
 
+      logEvent({
+        resourceType: 'destek talebi',
+        resourceId: String(input.ticketId),
+        action: 'mesaj eklendi',
+        actorId: userId,
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return {
         createdTicketMessage,
         message: 'Mesaj başarıyla eklendi',

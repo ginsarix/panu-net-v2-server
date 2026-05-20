@@ -1,4 +1,5 @@
 import { authorizedProcedure, pageRoleProtectedProcedure, router } from '../index.js';
+import { logEvent } from '../../utils/event-log.js';
 import {
   ContractCreateSchema,
   ContractEditSchema,
@@ -15,7 +16,7 @@ import { fileHashes } from '../../db/schema/fileHashes.js';
 export const contractRouter = router({
   createContract: authorizedProcedure
     .input(ContractCreateSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const [createdContract] = await db
         .insert(contracts)
         .values({
@@ -25,10 +26,19 @@ export const contractRouter = router({
         })
         .returning();
 
+      logEvent({
+        resourceType: 'sözleşme',
+        resourceId: String(createdContract.id),
+        action: 'oluşturuldu',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Sözleşme başarıyla oluşturuldu.', createdContract };
     }),
 
-  editContract: authorizedProcedure.input(ContractEditSchema).mutation(async ({ input }) => {
+  editContract: authorizedProcedure.input(ContractEditSchema).mutation(async ({ input, ctx }) => {
     const [updatedContract] = await db
       .update(contracts)
       .set({
@@ -38,12 +48,21 @@ export const contractRouter = router({
       .where(eq(contracts.id, input.id))
       .returning();
 
+    logEvent({
+      resourceType: 'sözleşme',
+      resourceId: String(input.id),
+      action: 'güncellendi',
+      actorId: Number(ctx.user.id),
+      status: 'başarılı',
+      ipAddress: ctx.req.ip,
+      userAgent: ctx.req.headers['user-agent'] ?? null,
+    });
     return { message: 'Sözleşme başarıyla güncellendi.', updatedContract };
   }),
 
   deleteContract: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const [contract] = await db.select().from(contracts).where(eq(contracts.id, input.id));
 
       if (!contract) {
@@ -69,6 +88,15 @@ export const contractRouter = router({
             eq(fileHashes.name, contractThumbnailFileName),
           ),
         );
+      logEvent({
+        resourceType: 'sözleşme',
+        resourceId: String(input.id),
+        action: 'silindi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Sözleşme başarıyla silindi.' };
     }),
 

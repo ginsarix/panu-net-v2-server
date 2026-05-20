@@ -57,7 +57,7 @@ npm run sentry:sourcemaps  # Inject and upload source maps to Sentry (called by 
 - **`src/trpc/`**: tRPC server setup
   - **`router/index.ts`**: Main app router combining all sub-routers
   - **`context.ts`**: Creates context from Fastify request/response (used in all procedures)
-  - **`router/*.ts`** (17 routers): Feature-specific implementations
+  - **`router/*.ts`** (18 routers): Feature-specific implementations
     - `auth.ts`: Login, logout, password reset, 2FA flow, device key management
     - `user.ts`: CRUD with pagination, sorting, search, company assignments
     - `company.ts`: CRUD with web service credentials, selected company session management
@@ -66,13 +66,14 @@ npm run sentry:sourcemaps  # Inject and upload source maps to Sentry (called by 
     - `report.ts`: Business reporting with period filtering
     - `definition.ts`, `contract.ts`, `stock.ts`, `order.ts`, `waybill.ts`, `ticket.ts`: Domain features
     - `page-role.ts`: Admin permission module management
+    - `event-log.ts`: Paginated audit log retrieval (`getEventLogs`)
 
 ### Database Layer
 - **`src/db/`**: Drizzle ORM setup
-  - **`schema/`**: 16 table definitions using Drizzle's declarative syntax
+  - **`schema/`**: 17 table definitions using Drizzle's declarative syntax
     - Core tables: `users`, `companies`, `subscriptions`, `subscription-customers`
     - Junction tables: `user-company`, `user-page-role`, `subscription-customer-junction`
-    - Feature tables: `contracts`, `definitions`, `page-role`, `tickets`, `ticketMessages`, etc.
+    - Feature tables: `contracts`, `definitions`, `page-role`, `tickets`, `ticketMessages`, `event-log`, etc.
   - **Relations**: Many-to-many relationships defined in `schema/relations.ts`
   - Migrations auto-generated to `drizzle/` directory (checked into git)
 
@@ -96,6 +97,7 @@ npm run sentry:sourcemaps  # Inject and upload source maps to Sentry (called by 
   - `file.ts`: File upload/conversion handlers (PDF to PNG, image optimization with Sharp)
   - `parsing.ts`: Data transformation utilities
   - `crypto.ts`: Cryptographic operations
+  - `event-log.ts`: `logEvent(params | params[])` — fire-and-forget audit log helper
 - **`src/config/env.ts`**: Environment validation with Zod (strict schema, all env vars parsed at startup)
 - **`src/constants/`**: App-wide constants (auth, messages, pagination, page roles)
 - **`src/types/`**: TypeScript type definitions and DTOs
@@ -120,6 +122,13 @@ npm run sentry:sourcemaps  # Inject and upload source maps to Sentry (called by 
 - All tRPC inputs use Zod schemas (defined in `src/services/zod-validations/`)
 - Reusable validation schemas across mutations and queries
 - Type inference: `input: z.infer<typeof SomeSchema>`
+
+### Event Logging (Audit Log)
+- Call `logEvent(params)` from `src/utils/event-log.ts` inside mutations after the operation succeeds
+- All `resourceType` and `action` strings are in Turkish so the client can render human-readable sentences directly
+- `logEvent` is fire-and-forget (errors are silently swallowed) — never `await` it
+- For bulk deletes, pass an array to log one entry per deleted resource
+- Auth failures (wrong password, expired/wrong OTP) are also logged with `status: 'başarısız'`
 
 ### Sentry Integration (Production Only)
 - Imported as `import * as Sentry from '@sentry/node'`

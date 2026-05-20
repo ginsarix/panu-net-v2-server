@@ -1,6 +1,7 @@
 import z from 'zod';
 import { definitions } from '../../db/schema/definitions.js';
 import { authorizedProcedure, protectedProcedure, router } from '../index.js';
+import { logEvent } from '../../utils/event-log.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { TRPCError } from '@trpc/server';
@@ -42,17 +43,26 @@ export const definitionRouter = router({
 
   createDefinition: authorizedProcedure
     .input(CreateDefinitionSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const definition = await db
         .insert(definitions)
         .values(input)
         .returning({ id: definitions.id });
+      logEvent({
+        resourceType: 'tanım',
+        resourceId: String(definition[0].id),
+        action: 'oluşturuldu',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { definition, message: 'Tanım başarıyla oluşturuldu.' };
     }),
 
   updateDefinition: authorizedProcedure
     .input(UpdateDefinitionSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const [definition] = await db
         .update(definitions)
         .set(input)
@@ -66,12 +76,21 @@ export const definitionRouter = router({
         });
       }
 
+      logEvent({
+        resourceType: 'tanım',
+        resourceId: String(input.id),
+        action: 'güncellendi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { definition, message: 'Tanım başarıyla güncellendi.' };
     }),
 
   deleteDefinition: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const definitionsCount = await db.$count(definitions);
 
       if (definitionsCount === 1) {
@@ -89,12 +108,21 @@ export const definitionRouter = router({
           message: definitionNotFoundMessage,
         });
       }
+      logEvent({
+        resourceType: 'tanım',
+        resourceId: String(input.id),
+        action: 'silindi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Tanım başarıyla silindi.' };
     }),
 
   setCurrentDefinition: authorizedProcedure
     .input(z.object({ definitionId: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       // Upsert FTW!!
       await db
         .insert(currentDefinition)
@@ -104,6 +132,15 @@ export const definitionRouter = router({
           set: { definitionId: input.definitionId },
         });
 
+      logEvent({
+        resourceType: 'tanım',
+        resourceId: String(input.definitionId),
+        action: 'aktif tanım değiştirildi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Tanım başarıyla seçildi.' };
     }),
 

@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { and, eq, inArray } from 'drizzle-orm';
+import { logEvent } from '../../utils/event-log.js';
 import { z } from 'zod';
 
 import { pageRoleProtectedProcedure, protectedProcedure, router } from '../index.js';
@@ -194,6 +195,14 @@ export const waybillRouter = router({
         ),
       );
 
+      logEvent({
+        resourceType: 'irsaliye',
+        action: 'iletildi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return {
         message: `İrsaliye listesi ${targetUsers.length} kullanıcıya gönderildi.`,
         sentTo: targetUsers.map((u) => ({ id: u.id, name: u.name, email: u.email })),

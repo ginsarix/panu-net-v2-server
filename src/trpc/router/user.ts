@@ -12,6 +12,7 @@ import { usersToPageRoles } from '../../db/schema/user-page-role.js';
 import { users } from '../../db/schema/user.js';
 import { CreateUserSchema, UpdateUserSchema } from '../../services/zod-validations/user.js';
 import { authorizedProcedure, router } from '../index.js';
+import { logEvent } from '../../utils/event-log.js';
 import { stripSensitive } from '../../utils/parsing.js';
 
 export const userRouter = router({
@@ -51,7 +52,7 @@ export const userRouter = router({
       const whereClause = search ? ilike(users.name, `%${search}%`) : undefined;
 
       const [fetchedUsers, totalCount] = await Promise.all([
-        await db
+        db
           .select()
           .from(users)
           .where(whereClause)
@@ -133,7 +134,7 @@ export const userRouter = router({
       return stripSensitive(user);
     }),
 
-  createUser: authorizedProcedure.input(CreateUserSchema).mutation(async ({ input }) => {
+  createUser: authorizedProcedure.input(CreateUserSchema).mutation(async ({ input, ctx }) => {
     const emailAlreadyExists = (await db.select().from(users).where(eq(users.email, input.email)))
       .length;
 
@@ -163,6 +164,15 @@ export const userRouter = router({
       await db.insert(usersToPageRoles).values(pageRoleValues);
     }
 
+    logEvent({
+      resourceType: 'kullanıcı',
+      resourceId: String(createdUser.id),
+      action: 'oluşturuldu',
+      actorId: Number(ctx.user.id),
+      status: 'başarılı',
+      ipAddress: ctx.req.ip,
+      userAgent: ctx.req.headers['user-agent'] ?? null,
+    });
     return {
       message: 'Kullanıcı başarıyla oluşturuldu.',
       id: createdUser.id,
@@ -177,7 +187,7 @@ export const userRouter = router({
         data: UpdateUserSchema,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       if (input.data.email) {
         const emailAlreadyExists = (
           await db.select().from(users).where(eq(users.email, input.data.email))
@@ -233,6 +243,15 @@ export const userRouter = router({
         }
       }
 
+      logEvent({
+        resourceType: 'kullanıcı',
+        resourceId: String(input.id),
+        action: 'güncellendi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return {
         message: 'Kullanıcı güncellendi.',
         updatedOn: editedUsers[0].updatedOn!,
@@ -241,7 +260,7 @@ export const userRouter = router({
 
   deleteUser: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const [user] = await db.select().from(users).where(eq(users.id, input.id));
 
       if (!user) {
@@ -260,12 +279,21 @@ export const userRouter = router({
         });
       }
 
+      logEvent({
+        resourceType: 'kullanıcı',
+        resourceId: String(input.id),
+        action: 'silindi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Kullanıcı silindi.' };
     }),
 
   deleteUsers: authorizedProcedure
     .input(z.object({ ids: z.array(z.number().int().positive()) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { ids } = input;
 
       if (!ids.length) {
@@ -297,6 +325,17 @@ export const userRouter = router({
         message: existingIds.has(id) ? 'Kullanıcı silindi' : 'Kullanıcı bulunamadı',
       }));
 
+      logEvent(
+        [...existingIds].map((id) => ({
+          resourceType: 'kullanıcı',
+          resourceId: String(id),
+          action: 'silindi',
+          actorId: Number(ctx.user.id),
+          status: 'başarılı' as const,
+          ipAddress: ctx.req.ip,
+          userAgent: ctx.req.headers['user-agent'] ?? null,
+        })),
+      );
       return {
         message:
           result.rowCount !== ids.length

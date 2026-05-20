@@ -23,6 +23,7 @@ import {
   UpdateCompanySchema,
 } from '../../services/zod-validations/company.js';
 import { authorizedProcedure, protectedProcedure, router } from '../index.js';
+import { logEvent } from '../../utils/event-log.js';
 import { users } from '../../db/schema/user.js';
 
 export const companyRouter = router({
@@ -136,11 +137,20 @@ export const companyRouter = router({
       return result;
     }),
 
-  createCompany: authorizedProcedure.input(CreateCompanySchema).mutation(async ({ input }) => {
+  createCompany: authorizedProcedure.input(CreateCompanySchema).mutation(async ({ input, ctx }) => {
     const [createdCompany] = await db
       .insert(companies)
       .values(input)
       .returning({ id: companies.id, creationDate: companies.creationDate });
+    logEvent({
+      resourceType: 'firma',
+      resourceId: String(createdCompany.id),
+      action: 'oluşturuldu',
+      actorId: Number(ctx.user.id),
+      status: 'başarılı',
+      ipAddress: ctx.req.ip,
+      userAgent: ctx.req.headers['user-agent'] ?? null,
+    });
     return {
       id: createdCompany.id,
       creationDate: createdCompany.creationDate,
@@ -187,12 +197,21 @@ export const companyRouter = router({
         });
       }
 
+      logEvent({
+        resourceType: 'firma',
+        resourceId: String(id),
+        action: 'güncellendi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { updatedOn: updatedCompanies[0].updatedOn, message: 'Firma güncellendi.' };
     }),
 
   deleteCompany: authorizedProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const [message, code, result] = await getCompanyById(input.id);
 
       if (message) {
@@ -218,12 +237,21 @@ export const companyRouter = router({
         });
       }
 
+      logEvent({
+        resourceType: 'firma',
+        resourceId: String(result.id),
+        action: 'silindi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Firma silindi.' };
     }),
 
   deleteCompanies: authorizedProcedure
     .input(z.object({ ids: z.array(z.number().int().positive()) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { ids } = input;
 
       if (!ids.length) {
@@ -252,6 +280,17 @@ export const companyRouter = router({
         message: deletedIds.includes(id) ? 'Firma silindi' : 'Bu firmaya erişiminiz yok.',
       }));
 
+      logEvent(
+        result.map((r) => ({
+          resourceType: 'firma',
+          resourceId: String(r.id),
+          action: 'silindi',
+          actorId: Number(ctx.user.id),
+          status: 'başarılı' as const,
+          ipAddress: ctx.req.ip,
+          userAgent: ctx.req.headers['user-agent'] ?? null,
+        })),
+      );
       return {
         message:
           result.length !== ids.length
@@ -302,6 +341,15 @@ export const companyRouter = router({
 
       await ctx.req.session.save();
 
+      logEvent({
+        resourceType: 'firma',
+        resourceId: String(input.id),
+        action: 'seçildi',
+        actorId: Number(ctx.user.id),
+        status: 'başarılı',
+        ipAddress: ctx.req.ip,
+        userAgent: ctx.req.headers['user-agent'] ?? null,
+      });
       return { message: 'Firma başarıyla seçildi.' };
     }),
 
