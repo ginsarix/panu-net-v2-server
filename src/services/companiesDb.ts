@@ -27,7 +27,11 @@ export const checkCompanyLicense = async (id: string | number): Promise<Result<D
 
   const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
 
-  if (company?.licenseDate < new Date()) {
+  if (!company) {
+    return [companyNotFoundMessage, 'NOT_FOUND', null];
+  }
+
+  if (company.licenseDate < new Date()) {
     return ['Bu firmanın lisansının süresi dolmuştur.', 'FORBIDDEN', null];
   }
 

@@ -122,6 +122,8 @@ export const authRouter = router({
       });
       await ctx.req.session.save();
 
+      await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+
       logEvent({
         resourceType: 'oturum',
         action: 'giriş yapıldı',
@@ -188,6 +190,10 @@ export const authRouter = router({
           ipAddress: ctx.req.ip,
           userAgent: ctx.req.headers['user-agent'] ?? null,
         });
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Çok fazla başarısız deneme. Lütfen daha sonra tekrar deneyin.',
+        });
       }
 
       if (twoFaContext.verificationCode === input.verificationCode.trim()) {
@@ -208,6 +214,11 @@ export const authRouter = router({
         await redis.del(redisKey);
         await redis.del(attemptsKey);
         //
+
+        await db
+          .update(users)
+          .set({ lastLoginAt: new Date() })
+          .where(eq(users.id, Number(twoFaContext.id)));
 
         logEvent({
           resourceType: 'oturum',
@@ -398,7 +409,6 @@ export const authRouter = router({
   getLogin: publicProcedure.query(async ({ ctx }) => {
     const login = ctx.req.session.get('login');
     if (login) {
-      await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, +login.id));
       return stripSensitive((await db.select().from(users).where(eq(users.id, +login.id)))[0]);
     }
     return null;

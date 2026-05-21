@@ -219,6 +219,22 @@ export const constructGetStocks = (
   },
 });
 
+export const constructGetStockMovements = (
+  sessionId: string,
+  companyCode: number,
+  periodCode: number = 0,
+  params?: Record<string, unknown>,
+  filters?: WsFilter[],
+) => ({
+  scf_stokkart_hareket_listele: {
+    session_id: sessionId,
+    firma_kodu: companyCode,
+    donem_kodu: periodCode,
+    params,
+    filters,
+  },
+});
+
 export const constructGetServices = (
   sessionId: string,
   companyCode: number,

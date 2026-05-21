@@ -59,7 +59,7 @@ export const userRouter = router({
           .orderBy(sortFn(sortColumn))
           .offset(skip)
           .limit(itemsPerPage),
-        db.$count(users),
+        db.$count(users, whereClause),
       ]);
 
       const userIds = fetchedUsers.map((user) => user.id);

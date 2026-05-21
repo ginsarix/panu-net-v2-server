@@ -170,5 +170,5 @@ fastify.listen(
 );
 
 process.on('SIGTERM', () => {
-  process.exit(0);
+  fastify.close(() => process.exit(0));
 });

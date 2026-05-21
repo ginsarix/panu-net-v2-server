@@ -151,6 +151,12 @@ export default function (fastify: FastifyInstance) {
     const { filename: rawFilename } = req.params as { filename: string };
 
     try {
+      await loginCheck(req.session);
+    } catch {
+      return res.status(401).send('Bu dosyaya erişim için giriş yapmalısınız.');
+    }
+
+    try {
       const { sanitizedFilename } = validateAndSanitizeFilename(
         rawFilename,
         path.join(process.cwd(), 'files', 'thumbnails'),

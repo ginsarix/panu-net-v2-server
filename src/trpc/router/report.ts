@@ -1,5 +1,4 @@
 import { TRPCError } from '@trpc/server';
-import chalk from 'chalk';
 import { z } from 'zod';
 
 import { unexpectedErrorMessage } from '../../constants/messages.js';
@@ -28,6 +27,7 @@ import {
   createdAtTodayFilters,
   dateRangeFilters,
   getAccountCards,
+  handleErrorCodes,
   isActiveFilter,
   sourceWithBcs,
   sourceWithScf,
@@ -274,11 +274,9 @@ export const reportRouter = router({
         checkEntriesResponse,
       ] = responses;
 
-      console.info(
-        chalk.inverse(
-          chalk.blueBright('General report requests: '),
-          ...responses.map((r) => r.config.data as unknown),
-        ),
+      ctx.req.log.info(
+        { requests: responses.map((r) => r.config.data as unknown) },
+        'General report requests',
       );
 
       const accountCardsCreditorSum = accountCardsResponse.data.result
@@ -351,6 +349,14 @@ export const reportRouter = router({
             ceksenet: 'True',
           }),
         );
+
+      const responseMsg = cashAccountMovementsResponse.data.msg;
+
+      handleErrorCodes(cashAccountMovementsResponse.data.code, {
+        notFound: responseMsg,
+        badRequest: responseMsg,
+        internalServerError: responseMsg,
+      });
 
       // Emit credit count change event after web service call
       try {

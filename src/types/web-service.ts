@@ -326,11 +326,21 @@ export interface WsGetCheckEntriesListResponse extends WsResponse {
 
 export interface WsGetStocksResponse extends WsResponse {
   result: {
+    _key: string;
     stokkartkodu: string;
     aciklama: string;
     stokkartturu: string;
     fiili_stok: string;
     birimadi: string;
+  }[];
+}
+
+export interface WsGetStockMovementsResponse extends WsResponse {
+  result: {
+    fisno: string;
+    aciklama: string;
+    tutari: string;
+    _cdate: string;
   }[];
 }
 
