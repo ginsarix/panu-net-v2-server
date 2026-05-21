@@ -19,6 +19,8 @@ import { setLogger } from './services/logger.js';
 import { setRedis } from './services/redis.js';
 import { createContext } from './trpc/context.js';
 import { type AppRouter, appRouter } from './trpc/router/index.js';
+import { isAxiosError } from 'axios';
+import { TRPCError } from '@trpc/server';
 
 let logStream: NodeJS.WritableStream | undefined;
 
@@ -45,6 +47,7 @@ if (env.NODE_ENV === 'production') {
 }
 
 export const fastify = Fastify({
+  trustProxy: '127.0.0.1',
   logger:
     env.NODE_ENV === 'development'
       ? {
@@ -114,18 +117,35 @@ fastify.register(fastifyTRPCPlugin, {
     router: appRouter,
     createContext,
     onError({ path, error }: { path: string | undefined; error: Error | string }) {
-      fastify.log.error(error, `Error in tRPC handler on path '${path}'`);
+      const cause = error instanceof TRPCError ? error.cause : undefined;
+      const axiosCause = isAxiosError(cause) ? cause : undefined;
+
+      if (axiosCause) {
+        fastify.log.error(
+          {
+            status: axiosCause.response?.status,
+            data: axiosCause.response?.data,
+            url: axiosCause.config?.url,
+          },
+          `Upstream Axios error on path '${path}'`,
+        );
+      } else {
+        fastify.log.error(error, `Error in tRPC handler on path '${path}'`);
+      }
 
       if (env.NODE_ENV === 'production') {
         Sentry.captureMessage(typeof error === 'string' ? error : error.message, {
           level: 'error',
-          tags: {
-            trpcPath: path,
-          },
+          tags: { trpcPath: path },
           contexts: {
-            trpc: {
-              path,
-            },
+            trpc: { path },
+            ...(axiosCause && {
+              upstream: {
+                status: axiosCause.response?.status,
+                data: axiosCause.response?.data,
+                url: axiosCause.config?.url,
+              },
+            }),
           },
         });
       }
