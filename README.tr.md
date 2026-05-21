@@ -2,17 +2,18 @@
 
 ## Genel Bakış
 
-Bu sunucu, kullanıcılar, firmalar, borçlular, alacaklılar, abonelikler ve görev takibi için kapsamlı bir API sağlayan [Fastify](https://www.fastify.io/) ve [tRPC](https://trpc.io/) ile oluşturulmuş bir Node.js arka ucudur. Veri depolama için PostgreSQL ([Drizzle ORM](https://orm.drizzle.team/)), önbellekleme ve oturum yönetimi için Redis kullanır ve harici web servisleri, e-posta bildirimleri ve SMS servisleriyle entegrasyonu destekler.
+Bu sunucu, kullanıcılar, firmalar, borçlular, alacaklılar, abonelikler, siparişler, raporlar ve daha fazlası için kapsamlı bir API sağlayan [Fastify](https://www.fastify.io/) ve [tRPC](https://trpc.io/) ile oluşturulmuş bir Node.js arka ucudur. Veri depolama için PostgreSQL ([Drizzle ORM](https://orm.drizzle.team/)), oturum yönetimi için Redis (ioredis) kullanır ve harici web servisleri, e-posta bildirimleri ile SMS servisleriyle entegrasyonu destekler.
 
 ---
 
 ## Mimarisi
 
 - **Giriş Noktası:** `src/index.ts`
-- **Çatılar:** Fastify, tRPC
+- **Çatılar:** Fastify 5.x, tRPC 11.x
 - **Veritabanı:** PostgreSQL (Drizzle ORM)
-- **Önbellek/Oturum:** Redis
-- **Kuyruk Sistemi:** Arka plan iş işleme için BullMQ
+- **Önbellek/Oturum:** Redis (ioredis)
+- **Arka Plan İşleri:** Node-cron (abonelik süre dolumu hatırlatıcıları, her gün saat 05:00)
+- **Hata Takibi:** Sentry
 - **API Yapısı:** Tüm uç noktalar `/trpc` altında tRPC router'ları ile sunulur.
 
 ---
@@ -23,35 +24,36 @@ Bu sunucu, kullanıcılar, firmalar, borçlular, alacaklılar, abonelikler ve g�
 
 - Kullanıcılar için **CRUD işlemleri** (oluşturma, okuma, güncelleme, silme, toplu silme)
 - **Bcrypt** ile parola şifreleme
-- **Rol tabanlı alanlar** (rol, e-posta vb.)
+- **Sayfa rolleri** (izin modülleri) aracılığıyla **rol tabanlı erişim kontrolü**
 - Kullanıcı listeleri için **sayfalama, sıralama ve arama**
-- Kullanıcı listelerinin Redis'te **önbelleğe alınması**
 
 ### 2. Firma Yönetimi
 
 - Firmalar için **CRUD işlemleri**
 - **Firma seçme ve seçili firmayı getirme** (oturum tabanlı)
+- Firma başına **web servisi kimlik bilgileri** (URL, kullanıcı adı, API anahtarı/şifresi)
 - Firma listeleri için **sayfalama, sıralama ve arama**
-- Firma listelerinin Redis'te **önbelleğe alınması**
 
 ### 3. Borçlu & Alacaklı Yönetimi
 
 - Seçili firma ve dönem için **borçlu ve alacaklı listelerini çekme**
-- **Harici web servisleriyle entegrasyon** (HTTP POST, oturum tabanlı kimlik doğrulama)
+- **Harici SIS web servisiyle entegrasyon** (HTTP POST, oturum tabanlı kimlik doğrulama)
 - Web servisi yanıtları için **hata yönetimi**
 
 ### 4. Abonelik Yönetimi
 
 - Abonelikler için **CRUD işlemleri** (domain, SSL, hosting, mail)
 - **Abonelik müşteri yönetimi** iletişim tercihleri ile
-- **Otomatik süre dolumu bildirimleri** e-posta ve SMS ile
-- **Arka plan iş işleme** abonelik süre dolumu hatırlatıcıları için
+- **Otomatik süre dolumu bildirimleri** e-posta ve SMS ile (30, 15, 7 gün öncesinde)
 
-### 5. Görev Takibi
+### 5. Siparişler, Sözleşmeler, Stok, İrsaliye & Biletler
 
-- **Müşteri yönetimi** abonelik takibi için
-- **Abonelik süre dolumu izleme** otomatik bildirimlerle
-- **E-posta ve SMS entegrasyonu** müşteri iletişimi için
+- Siparişler, sözleşmeler, stok, irsaliye ve destek biletleri için tam router'lar
+
+### 6. Raporlama & Denetim Kaydı
+
+- **Dönem filtreleme** ile iş raporlaması
+- Tüm kullanıcı işlemlerini takip etmek için **sayfalandırılmış denetim kaydı** (`event-log`)
 
 ---
 
@@ -59,12 +61,22 @@ Bu sunucu, kullanıcılar, firmalar, borçlular, alacaklılar, abonelikler ve g�
 
 Tüm uç noktalar `/trpc` altında sunulmaktadır.
 
+- `/trpc/auth` - Giriş, çıkış, şifre sıfırlama, 2FA, cihaz anahtarı yönetimi
 - `/trpc/user` - Kullanıcı yönetimi
 - `/trpc/company` - Firma yönetimi
-- `/trpc/debtor` - Borçlu verisi (harici entegrasyon)
-- `/trpc/creditor` - Alacaklı verisi (harici entegrasyon)
+- `/trpc/debtor` - Borçlu verisi (harici SIS entegrasyonu)
+- `/trpc/creditor` - Alacaklı verisi (harici SIS entegrasyonu)
 - `/trpc/subscription` - Abonelik yönetimi
 - `/trpc/subscriptionCustomer` - Abonelik müşteri yönetimi
+- `/trpc/report` - İş raporlaması
+- `/trpc/definition` - Tanım yönetimi
+- `/trpc/contract` - Sözleşme yönetimi
+- `/trpc/stock` - Stok yönetimi
+- `/trpc/order` - Sipariş yönetimi
+- `/trpc/waybill` - İrsaliye yönetimi
+- `/trpc/ticket` - Destek bileti yönetimi
+- `/trpc/pageRole` - İzin modülü yönetimi
+- `/trpc/eventLog` - Denetim kaydı sorgulama
 
 Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorgu ve mutasyon) sunar.
 
@@ -74,24 +86,25 @@ Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorg
 
 ### Kullanıcılar Tablosu
 
-| Alan         | Tip       | Açıklama           |
-| ------------ | --------- | ------------------ |
-| id           | serial    | Birincil anahtar   |
-| name         | varchar   | Kullanıcı adı      |
-| email        | varchar   | Kullanıcı e-posta  |
-| phone        | varchar   | Kullanıcı telefon  |
-| password     | varchar   | Şifrelenmiş parola |
-| role         | varchar   | Kullanıcı rolü     |
-| creationDate | timestamp | Oluşturulma zamanı |
-| updatedOn    | timestamp | Son güncelleme     |
+| Alan          | Tip       | Açıklama           |
+| ------------- | --------- | ------------------ |
+| id            | serial    | Birincil anahtar   |
+| name          | varchar   | Kullanıcı adı      |
+| email         | varchar   | Kullanıcı e-posta  |
+| phone         | varchar   | Kullanıcı telefon  |
+| password      | varchar   | Şifrelenmiş parola |
+| role          | varchar   | Kullanıcı rolü     |
+| creationDate  | timestamp | Oluşturulma zamanı |
+| updatedOn     | timestamp | Son güncelleme     |
+| last_login_at | timestamp | Son giriş zamanı   |
 
 ### Firmalar Tablosu
 
 | Alan               | Tip       | Açıklama                  |
 | ------------------ | --------- | ------------------------- |
 | id                 | serial    | Birincil anahtar          |
-| code               | varchar   | Firma kodu               |
-| name               | varchar   | Firma adı                |
+| code               | varchar   | Firma kodu                |
+| name               | varchar   | Firma adı                 |
 | manager            | varchar   | Yönetici adı              |
 | phone              | varchar   | Telefon numarası          |
 | licenseDate        | timestamp | Lisans tarihi             |
@@ -105,6 +118,14 @@ Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorg
 | creationDate       | timestamp | Oluşturulma zamanı        |
 | updatedOn          | timestamp | Son güncelleme            |
 
+### KullanıcılarFirmalara Tablosu
+
+| Alan       | Tip                     | Açıklama                |
+| ---------- | ----------------------- | ----------------------- |
+| user_id    | integer                 | Yabancı anahtar → kullanıcı |
+| company_id | integer                 | Yabancı anahtar → firma |
+| created_at | timestamp with timezone | Oluşturulma zamanı      |
+
 ### Abonelikler Tablosu
 
 | Alan             | Tip       | Açıklama                        |
@@ -113,7 +134,7 @@ Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorg
 | startDate        | date      | Abonelik başlangıç tarihi       |
 | endDate          | date      | Abonelik bitiş tarihi           |
 | subscriptionType | enum      | Tip: domain, ssl, hosting, mail |
-| userId           | integer   | Abonelik müşterisine referans   |
+| customerId       | integer   | Abonelik müşterisine referans   |
 | creationDate     | timestamp | Oluşturulma zamanı              |
 | updatedOn        | timestamp | Son güncelleme                  |
 
@@ -130,152 +151,127 @@ Her router, CRUD ve iş mantığı işlemleri için birden fazla prosedür (sorg
 | creationDate          | timestamp | Oluşturulma zamanı         |
 | updatedOn             | timestamp | Son güncelleme             |
 
+### Olay Kayıtları Tablosu
+
+| Alan         | Tip                     | Açıklama                                 |
+| ------------ | ----------------------- | ---------------------------------------- |
+| id           | serial                  | Birincil anahtar                         |
+| resourceType | text                    | Kaynak türü (Türkçe)                     |
+| resourceId   | text                    | Etkilenen kaynağın ID'si                 |
+| action       | text                    | Gerçekleştirilen işlem (Türkçe)          |
+| actorId      | integer                 | Yabancı anahtar → kullanıcı (null olabilir) |
+| status       | text                    | Sonuç (`başarılı` / `başarısız`)         |
+| ipAddress    | text                    | İstemci IP adresi                        |
+| userAgent    | text                    | İstemci kullanıcı ajanı                  |
+| createdAt    | timestamp with timezone | Oluşturulma zamanı                       |
+
 ---
 
 ## Kimlik Doğrulama & Oturum Yönetimi
 
-- **Oturumlar**, Redis ile birlikte `fastify-session` kullanılarak yönetilir.
-- **Oturum verisi**, seçili firma ve web servisi oturum kimliklerini içerir.
-- **Parola şifreleme**, yapılandırılabilir salt round ile bcrypt kullanır.
-- **Açık bir giriş (login) uç noktası yoktur**; kimlik doğrulama muhtemelen oturum ve harici web servisi girişi ile sağlanır.
+- **Oturumlar**, Redis'te 24 saatlik TTL ile `@mgcrea/fastify-session` kullanılarak yönetilir.
+- **Oturum verisi** `userId`, `selectedCompanyId` ve `externalSessionId` (web servisi kimlik doğrulaması için) içerir.
+- **Parola şifreleme**, 10 salt round ile bcrypt kullanır.
+- **Giriş/çıkış** ve tam 2FA akışı `/trpc/auth` router'ı üzerinden sunulmaktadır.
 
 ---
 
-## Önbellekleme
+## Arka Plan İşleri
 
-- **Kullanıcı ve firma listeleri**, performans için Redis'te önbelleğe alınır.
-- **Önbellek anahtarları**, sayfalama, sıralama ve arama parametrelerine göre oluşturulur.
-- **Önbellek süresi (TTL)** yapılandırılabilir.
-
----
-
-## Kuyruk Sistemi & Arka Plan İşçileri
-
-- **BullMQ** arka plan iş işleme için kullanılır
-- **Abonelik süre dolumu işçisi** süresi dolacak abonelikleri kontrol etmek için günlük çalışır
-- **E-posta bildirimleri** 30, 15 ve 7 gün içinde süresi dolacak abonelikler için gönderilir
-- **SMS bildirimleri** NetGSM entegrasyonu ile gönderilir
-- **İşçi süreçleri** `npm run dev:worker` veya `npm run start:worker` ile ayrı olarak çalıştırılabilir
-
-### Mevcut İşçiler
-
-- **Abonelik Süre Dolumu İşçisi** (`src/services/queue-system/workers/subscription-expiry-worker.ts`)
-  - 30, 15 ve 7 gün içinde süresi dolacak abonelikleri kontrol eder
-  - Müşteri tercihlerine göre e-posta ve SMS bildirimleri gönderir
-  - Her 24 saatte bir otomatik olarak çalışır
+- **Node-cron**, abonelik hatırlatıcı işini her gün saat 05:00'de zamanlar.
+- **Abonelik hatırlatıcısı** (`src/services/jobs/subscription-reminder.ts`), müşteri tercihlerine göre 7, 15 ve 30 gün içinde süresi dolacak abonelikler için e-posta ve SMS bildirimleri gönderir.
+- Ayrı bir işçi süreci gerekmez — işler ana sunucu süreci içinde çalışır.
 
 ---
 
 ## Harici Entegrasyonlar
 
-- **Borçlu ve alacaklı verileri**, firma kimlik bilgileriyle harici bir web servisinden (SIS) çekilir.
-- **Her harici istekten önce oturum tabanlı kimlik doğrulama** yapılır.
-- **Yanıtlar** ayrıştırılır ve hatalar HTTP ve iş mantığına göre yönetilir.
-- **E-posta servisi** entegrasyonu abonelik bildirimleri için
-- **SMS servisi** entegrasyonu NetGSM ile abonelik hatırlatıcıları için
+- **Borçlu ve alacaklı verileri**, firma kimlik bilgileriyle harici bir SIS web servisinden çekilir.
+- **Her harici istekten önce oturum tabanlı kimlik doğrulama** yapılır; oturum kimliği kullanıcının sunucu oturumunda saklanır.
+- **E-posta servisi** abonelik bildirimleri için Nodemailer (SMTP) kullanır.
+- **SMS servisi** abonelik hatırlatıcıları için NetGSM REST API kullanır.
 
 ---
 
-## Metrikler & Sıkıştırma
+## Sıkıştırma
 
-- **Prometheus metrikleri** `/metrics` altında sunulur.
-- **Gzip sıkıştırma** global olarak etkindir.
+- **Gzip sıkıştırma** tüm yanıtlarda global olarak etkindir.
 
 ---
 
 ## Ortam Değişkenleri
 
-- `PORT` - Sunucu portu
-- `CORS_ORIGIN` - İzin verilen CORS kökenleri
-- `REDIS_SECRET` - Redis şifresi
-- `SESSION_SECRET` - Oturum anahtarı
-- `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` - PostgreSQL bağlantısı
-- `REDIS_URI` - Redis bağlantı URI'si
-- `NETGSM_USERNAME`, `NETGSM_PASSWORD` - NetGSM SMS servisi kimlik bilgileri
-- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` - E-posta servisi yapılandırması
+| Değişken             | Açıklama                                               |
+| -------------------- | ------------------------------------------------------ |
+| `NODE_ENV`           | `development`, `production` veya `test`                |
+| `PORT`               | Sunucu portu (varsayılan: `3000`)                      |
+| `CORS_ORIGIN`        | İzin verilen CORS kaynak URL'si                        |
+| `REDIS_URI`          | Redis bağlantı URI'si (kimlik doğrulama dahil)         |
+| `SESSION_KEY`        | Base64 kodlanmış 32+ byte oturum anahtarı              |
+| `DB_HOST`            | PostgreSQL host                                        |
+| `DB_USER`            | PostgreSQL kullanıcısı                                 |
+| `DB_PASS`            | PostgreSQL şifresi                                     |
+| `DB_NAME`            | PostgreSQL veritabanı adı                              |
+| `SMTP_USER`          | SMTP e-posta adresi                                    |
+| `SMTP_PASS`          | SMTP şifresi                                           |
+| `NETGSM_HEADER`      | NetGSM SMS gönderici başlığı                           |
+| `NETGSM_USERNAME`    | NetGSM kullanıcı adı                                   |
+| `NETGSM_PASSWORD`    | NetGSM şifresi                                         |
+| `SENTRY_DSN`         | Sentry DSN (isteğe bağlı, yalnızca üretim)            |
+| `FAKE_2FA`           | Geliştirmede gerçek 2FA'yı atlamak için `true` yapın  |
+
+Tüm değişkenler, başlangıçta `src/config/env.ts` üzerinden Zod ile doğrulanır.
 
 ---
 
 ## Proje Yapısı
 
-- `src/index.ts` - Ana sunucu girişi
-- `src/trpc/router/` - tRPC router'ları (user, company, debtor, creditor, subscription, subscriptionCustomer)
-- `src/db/schema/` - Veritabanı şema tanımları
-- `src/services/` - İş mantığı, Redis, web servisi entegrasyonu, kuyruk sistemi
-- `src/services/queue-system/` - Arka plan iş işleme (BullMQ)
-- `src/services/queue-system/workers/` - Arka plan işçileri
-- `src/types/` - TypeScript tipleri
-- `src/utils/` - Yardımcı fonksiyonlar (e-posta, formatlama)
-
----
-
-## İstemci Uygulaması
-
-Proje, aşağıdaki teknolojilerle oluşturulmuş bir Vue.js 3 ön uç uygulaması içerir:
-
-- **Çatı:** Vue 3 Composition API ile
-- **UI Kütüphanesi:** Vuetify 3
-- **Durum Yönetimi:** Pinia
-- **Yönlendirme:** Vue Router
-- **HTTP İstemcisi:** tRPC client
-- **Derleme Aracı:** Vite
-- **TypeScript:** Tam TypeScript desteği
-
-### İstemci Özellikleri
-
-- **KPI'lar ve hızlı erişim** ile Dashboard
-- **Kullanıcı Yönetimi** (sadece admin)
-- **Firma Yönetimi** (sadece admin)
-- **Harici veri entegrasyonu** ile Borçlu & Alacaklı Yönetimi
-- **Süre dolumu takibi** ile Abonelik Yönetimi
-- **Abonelik müşterileri** için Görev Takibi
-- **Genel raporlama** işlevselliği ile Raporlar
-- **Mobil destek** ile Duyarlı Tasarım
-
-### İstemci Navigasyon Yapısı
-
-- **Ana Sayfa** - İstatistikler ve hızlı erişim ile Dashboard
-- **Borçlular & Alacaklılar** - Harici veri entegrasyonu
-- **Görev Takibi** - Abonelik ve müşteri yönetimi
-- **Yönetim** - Kullanıcı ve firma yönetimi (sadece admin)
-- **Siparişler** - Sipariş yönetimi (planlanmış)
-- **Raporlar** - Genel raporlama işlevselliği
+```
+src/
+├── index.ts                      # Ana sunucu giriş noktası
+├── config/env.ts                 # Ortam değişkeni doğrulama (Zod)
+├── constants/                    # Uygulama sabitleri (auth, sayfalama, sayfa rolleri)
+├── db/
+│   └── schema/                   # Drizzle ORM tablo tanımları & ilişkiler
+├── router/
+│   └── file.ts                   # Fastify dosya yükleme rotası (/upload)
+├── services/
+│   ├── jobs/                     # Arka plan cron işleri
+│   │   └── subscription-reminder.ts
+│   ├── zod-validations/          # Zod giriş şemaları
+│   ├── web-service/              # Harici SIS API entegrasyonu
+│   ├── redis.ts                  # Redis istemcisi
+│   ├── logger.ts                 # Pino logger tekili
+│   └── netgsm.ts                 # NetGSM SMS sarmalayıcı
+├── trpc/
+│   ├── context.ts                # tRPC istek bağlamı
+│   └── router/                   # tRPC router'ları (auth, user, company, …)
+├── types/                        # TypeScript tip tanımları
+└── utils/                        # Yardımcılar (auth, e-posta, dosya, crypto, event-log)
+```
 
 ---
 
 ## Nasıl Çalıştırılır
 
-### Sunucu Kurulumu
+### Kurulum
 
-1. Sunucu dizinine gidin: `cd server`
-2. Bağımlılıkları yükleyin: `npm install`
-3. Ortam değişkenlerini `.env` dosyasında ayarlayın.
-4. Veritabanı migrasyonlarını çalıştırın: `npm run drizzle:migrate`
-5. Sunucuyu başlatın: `npm run dev`
-6. (İsteğe bağlı) Arka plan işçilerini başlatın: `npm run dev:worker`
-7. API'ye şu adresten erişin: `http://localhost:<PORT>/trpc`
-
-### İstemci Kurulumu
-
-1. İstemci dizinine gidin: `cd client`
-2. Bağımlılıkları yükleyin: `npm install`
-3. Geliştirme sunucusunu başlatın: `npm run dev`
-4. Uygulamaya şu adresten erişin: `http://localhost:5173`
-
-### Tam Stack Geliştirme
-
-1. Sunucuyu başlatın (`server/` dizininden): `npm run dev`
-2. İstemciyi başlatın (`client/` dizininden): `npm run dev`
-3. İstemci otomatik olarak sunucu API'sine bağlanacaktır
+1. Bağımlılıkları yükleyin: `npm install`
+2. Ortam değişkenlerini `.env` dosyasında ayarlayın (yukarıdaki Ortam Değişkenleri tablosuna bakın).
+3. Veritabanı migrasyonlarını çalıştırın: `npm run drizzle:migrate`
+4. Geliştirme sunucusunu başlatın: `npm run dev`
+5. API'ye şu adresten erişin: `http://localhost:3000/trpc`
 
 ### Mevcut Scriptler
 
-- `npm run dev` - Geliştirme sunucusunu başlat
-- `npm run dev:worker` - Geliştirme ortamında arka plan işçilerini başlat
-- `npm run dev:debug` - Hata ayıklama ile sunucuyu başlat
-- `npm run build` - Üretim için derle
-- `npm run start` - Üretim sunucusunu başlat
-- `npm run start:worker` - Üretim ortamında arka plan işçilerini başlat
-- `npm run drizzle:generate` - Veritabanı migrasyonları oluştur
-- `npm run drizzle:migrate` - Veritabanı migrasyonlarını çalıştır
-- `npm run drizzle:studio` - Veritabanı yönetimi için Drizzle Studio'yu aç
+| Script                          | Açıklama                                              |
+| ------------------------------- | ----------------------------------------------------- |
+| `npm run dev`                   | Otomatik yeniden yükleme ile geliştirme sunucusu      |
+| `npm run dev:debug`             | Node hata ayıklayıcısı ile geliştirme sunucusu        |
+| `npm run build`                 | TypeScript derle ve Sentry kaynak haritalarını yükle  |
+| `npm run start`                 | Derlenmiş üretim sunucusunu çalıştır (`dist/index.js`)|
+| `npm run lint`                  | ESLint çalıştır                                       |
+| `npm run format`                | Prettier ile kaynak dosyaları formatla                |
+| `npm run drizzle:generate`      | Şema değişikliklerinden migrasyon dosyaları oluştur   |
+| `npm run drizzle:migrate`       | Bekleyen veritabanı migrasyonlarını çalıştır          |
+| `npm run drizzle:studio`        | Görsel DB inceleme için Drizzle Studio'yu aç          |

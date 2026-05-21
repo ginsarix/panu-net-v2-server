@@ -2,17 +2,18 @@
 
 ## Overview
 
-This server is a Node.js backend built with [Fastify](https://www.fastify.io/) and [tRPC](https://trpc.io/), providing a comprehensive API for managing users, companies, debtors, creditors, subscriptions, and task tracking. It uses PostgreSQL for data storage (via [Drizzle ORM](https://orm.drizzle.team/)), Redis for caching and session management, and supports integration with external web services, email notifications, and SMS services.
+This server is a Node.js backend built with [Fastify](https://www.fastify.io/) and [tRPC](https://trpc.io/), providing a comprehensive API for managing users, companies, debtors, creditors, subscriptions, orders, reports, and more. It uses PostgreSQL for data storage (via [Drizzle ORM](https://orm.drizzle.team/)), Redis for session management, and supports integration with external web services, email notifications, and SMS services.
 
 ---
 
 ## Architecture
 
 - **Entry Point:** `src/index.ts`
-- **Frameworks:** Fastify, tRPC
+- **Frameworks:** Fastify 5.x, tRPC 11.x
 - **Database:** PostgreSQL (Drizzle ORM)
-- **Cache/Session:** Redis
-- **Queue System:** BullMQ for background job processing
+- **Cache/Session:** Redis (ioredis)
+- **Background Jobs:** Node-cron (subscription expiry reminders, daily at 5 AM)
+- **Error Tracking:** Sentry
 - **API Structure:** All endpoints are exposed under `/trpc` using tRPC routers.
 
 ---
@@ -23,35 +24,36 @@ This server is a Node.js backend built with [Fastify](https://www.fastify.io/) a
 
 - **CRUD operations** for users (create, read, update, delete, batch delete)
 - **Password hashing** with bcrypt
-- **Role-based fields** (role, email, etc.)
+- **Role-based access control** via page roles (permission modules)
 - **Pagination, sorting, and search** for user lists
-- **Redis caching** for user lists
 
 ### 2. Company Management
 
 - **CRUD operations** for companies
 - **Select and get selected company** (session-based)
+- **Web service credentials** per company (URL, username, API key/secret)
 - **Pagination, sorting, and search** for company lists
-- **Redis caching** for company lists
 
 ### 3. Debtor & Creditor Management
 
 - **Fetch lists of debtors and creditors** for a selected company and period
-- **Integration with external web services** (via HTTP POST, session-based authentication)
+- **Integration with external SIS web service** (HTTP POST, session-based authentication)
 - **Error handling** for web service responses
 
 ### 4. Subscription Management
 
 - **CRUD operations** for subscriptions (domain, SSL, hosting, mail)
 - **Subscription customer management** with contact preferences
-- **Automated expiry notifications** via email and SMS
-- **Background job processing** for subscription expiry reminders
+- **Automated expiry notifications** via email and SMS (30, 15, 7 days before expiry)
 
-### 5. Task Tracking
+### 5. Orders, Contracts, Stocks, Waybills & Tickets
 
-- **Customer management** for subscription tracking
-- **Subscription expiry monitoring** with automated notifications
-- **Email and SMS integration** for customer communications
+- Full domain feature routers for orders, contracts, stock, waybill, and support tickets
+
+### 6. Reporting & Audit Log
+
+- **Business reporting** with period filtering
+- **Paginated audit log** (`event-log`) for tracking all user actions
 
 ---
 
@@ -59,12 +61,22 @@ This server is a Node.js backend built with [Fastify](https://www.fastify.io/) a
 
 All endpoints are available under `/trpc`.
 
+- `/trpc/auth` - Login, logout, password reset, 2FA, device key management
 - `/trpc/user` - User management
 - `/trpc/company` - Company management
-- `/trpc/debtor` - Debtor data (external integration)
-- `/trpc/creditor` - Creditor data (external integration)
+- `/trpc/debtor` - Debtor data (external SIS integration)
+- `/trpc/creditor` - Creditor data (external SIS integration)
 - `/trpc/subscription` - Subscription management
 - `/trpc/subscriptionCustomer` - Subscription customer management
+- `/trpc/report` - Business reporting
+- `/trpc/definition` - Definition management
+- `/trpc/contract` - Contract management
+- `/trpc/stock` - Stock management
+- `/trpc/order` - Order management
+- `/trpc/waybill` - Waybill management
+- `/trpc/ticket` - Support ticket management
+- `/trpc/pageRole` - Permission module management
+- `/trpc/eventLog` - Audit log retrieval
 
 Each router exposes multiple procedures (queries and mutations) for CRUD and business operations.
 
@@ -106,14 +118,12 @@ Each router exposes multiple procedures (queries and mutations) for CRUD and bus
 | creationDate       | timestamp | Creation timestamp         |
 | updatedOn          | timestamp | Last update                |
 
----
-
 ### UsersToCompanies Table
 
 | Field      | Type                    | Description        |
 | ---------- | ----------------------- | ------------------ |
-| user_id    | integer                 | Primary key        |
-| company_id | integer                 | Company code       |
+| user_id    | integer                 | Foreign key → user |
+| company_id | integer                 | Foreign key → company |
 | created_at | timestamp with timezone | Creation timestamp |
 
 ### Subscriptions Table
@@ -124,7 +134,7 @@ Each router exposes multiple procedures (queries and mutations) for CRUD and bus
 | startDate        | date      | Subscription start date            |
 | endDate          | date      | Subscription end date              |
 | subscriptionType | enum      | Type: domain, ssl, hosting, mail   |
-| userId           | integer   | Reference to subscription customer |
+| customerId       | integer   | Reference to subscription customer |
 | creationDate     | timestamp | Creation timestamp                 |
 | updatedOn        | timestamp | Last update                        |
 
@@ -141,144 +151,127 @@ Each router exposes multiple procedures (queries and mutations) for CRUD and bus
 | creationDate          | timestamp | Creation timestamp        |
 | updatedOn             | timestamp | Last update               |
 
+### EventLogs Table
+
+| Field        | Type                    | Description                        |
+| ------------ | ----------------------- | ---------------------------------- |
+| id           | serial                  | Primary key                        |
+| resourceType | text                    | Resource type (in Turkish)         |
+| resourceId   | text                    | ID of the affected resource        |
+| action       | text                    | Action performed (in Turkish)      |
+| actorId      | integer                 | Foreign key → user (nullable)      |
+| status       | text                    | Outcome (`başarılı` / `başarısız`) |
+| ipAddress    | text                    | Client IP address                  |
+| userAgent    | text                    | Client user agent                  |
+| createdAt    | timestamp with timezone | Creation timestamp                 |
+
 ---
 
 ## Authentication & Session Management
 
-- **Sessions** are managed using `fastify-session` with Redis as the store.
-- **Session data** includes selected company and web service session IDs.
-- **Password hashing** uses bcrypt with a configurable salt round.
-- **No explicit login endpoint** is present; authentication is likely handled via session and external web service login.
+- **Sessions** are managed using `@mgcrea/fastify-session` with Redis as the store (24h TTL).
+- **Session data** includes `userId`, `selectedCompanyId`, and `externalSessionId` (for web service auth).
+- **Password hashing** uses bcrypt with 10 salt rounds.
+- **Login/logout** and full 2FA flow are exposed via the `/trpc/auth` router.
 
 ---
 
-## Queue System & Background Workers
+## Background Jobs
 
-- **BullMQ** is used for background job processing
-- **Subscription expiry worker** runs daily to check for expiring subscriptions
-- **Email notifications** are sent for subscriptions expiring in 30, 15, and 7 days
-- **SMS notifications** are sent via NetGSM integration
-- **Worker processes** can be run separately using `npm run dev:worker` or `npm run start:worker`
-
-### Available Workers
-
-- **Subscription Expiry Worker** (`src/services/queue-system/workers/subscription-expiry-worker.ts`)
-  - Checks for subscriptions expiring in 30, 15, and 7 days
-  - Sends email and SMS notifications based on customer preferences
-  - Runs automatically every 24 hours
+- **Node-cron** schedules the subscription reminder job daily at 5 AM.
+- **Subscription reminder** (`src/services/jobs/subscription-reminder.ts`) sends email and SMS notifications for subscriptions expiring in 7, 15, and 30 days based on customer preferences.
+- No separate worker process is needed — jobs run inside the main server process.
 
 ---
 
 ## External Integrations
 
-- **Debtor and Creditor data** are fetched from an external web service using company credentials.
-- **Session-based authentication** is performed before each external request.
-- **Responses** are parsed and errors are handled according to HTTP and business logic.
-- **Email service** integration for subscription notifications
-- **SMS service** integration via NetGSM for subscription reminders
+- **Debtor and Creditor data** are fetched from an external SIS web service using company credentials.
+- **Session-based authentication** is performed before each external request; the session ID is stored in the user's server session.
+- **Email service** via Nodemailer (SMTP) for subscription notifications.
+- **SMS service** via NetGSM REST API for subscription reminders.
 
 ---
 
-## Metrics & Compression
+## Compression
 
-- **Prometheus metrics** are available at `/metrics`.
-- **Gzip compression** is enabled globally.
+- **Gzip compression** is enabled globally on all responses.
 
 ---
 
 ## Environment Variables
 
-- `PORT` - Server port
-- `CORS_ORIGIN` - Allowed CORS origins
-- `REDIS_SECRET` - Redis password
-- `SESSION_SECRET` - Session secret
-- `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` - PostgreSQL connection
-- `REDIS_URI` - Redis connection URI
-- `NETGSM_USERNAME`, `NETGSM_PASSWORD` - NetGSM SMS service credentials
-- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` - Email service configuration
+| Variable             | Description                                 |
+| -------------------- | ------------------------------------------- |
+| `NODE_ENV`           | `development`, `production`, or `test`      |
+| `PORT`               | Server port (default: `3000`)               |
+| `CORS_ORIGIN`        | Allowed CORS origin URL                     |
+| `REDIS_URI`          | Redis connection URI (includes auth)        |
+| `SESSION_KEY`        | Base64-encoded 32+ byte session secret      |
+| `DB_HOST`            | PostgreSQL host                             |
+| `DB_USER`            | PostgreSQL user                             |
+| `DB_PASS`            | PostgreSQL password                         |
+| `DB_NAME`            | PostgreSQL database name                    |
+| `SMTP_USER`          | SMTP email address                          |
+| `SMTP_PASS`          | SMTP password                               |
+| `NETGSM_HEADER`      | NetGSM SMS sender header                    |
+| `NETGSM_USERNAME`    | NetGSM username                             |
+| `NETGSM_PASSWORD`    | NetGSM password                             |
+| `SENTRY_DSN`         | Sentry DSN (optional, production only)      |
+| `FAKE_2FA`           | Set `true` in development to skip real 2FA  |
+
+All variables are validated at startup via `src/config/env.ts` using Zod.
 
 ---
 
 ## Project Structure
 
-- `src/index.ts` - Main server entry
-- `src/trpc/router/` - tRPC routers (user, company, debtor, creditor, subscription, subscriptionCustomer)
-- `src/db/schema/` - Database schema definitions
-- `src/services/` - Business logic, Redis, web service integration, queue system
-- `src/services/queue-system/` - Background job processing (BullMQ)
-- `src/services/queue-system/workers/` - Background workers
-- `src/types/` - TypeScript types
-- `src/utils/` - Utility functions (email, formatting)
-
----
-
-## Client Application
-
-The project includes a Vue.js 3 frontend application built with:
-
-- **Framework:** Vue 3 with Composition API
-- **UI Library:** Vuetify 3
-- **State Management:** Pinia
-- **Routing:** Vue Router
-- **HTTP Client:** tRPC client
-- **Build Tool:** Vite
-- **TypeScript:** Full TypeScript support
-
-### Client Features
-
-- **Dashboard** with KPIs and quick links
-- **User Management** (admin only)
-- **Company Management** (admin only)
-- **Debtor & Creditor Management** with external data integration
-- **Subscription Management** with expiry tracking
-- **Task Tracking** for subscription customers
-- **Reports** with general reporting functionality
-- **Responsive Design** with mobile support
-
-### Client Navigation Structure
-
-- **Home** - Dashboard with statistics and quick access
-- **Debtors & Creditors** - External data integration
-- **Task Tracking** - Subscription and customer management
-- **Management** - User and company administration (admin only)
-- **Orders** - Order management (planned)
-- **Reports** - General reporting functionality
+```
+src/
+├── index.ts                      # Main server entry point
+├── config/env.ts                 # Environment variable validation (Zod)
+├── constants/                    # App-wide constants (auth, pagination, page roles)
+├── db/
+│   └── schema/                   # Drizzle ORM table definitions & relations
+├── router/
+│   └── file.ts                   # Fastify file upload route (/upload)
+├── services/
+│   ├── jobs/                     # Background cron jobs
+│   │   └── subscription-reminder.ts
+│   ├── zod-validations/          # Zod input schemas
+│   ├── web-service/              # External SIS API integration
+│   ├── redis.ts                  # Redis client
+│   ├── logger.ts                 # Pino logger singleton
+│   └── netgsm.ts                 # NetGSM SMS wrapper
+├── trpc/
+│   ├── context.ts                # tRPC request context
+│   └── router/                   # tRPC routers (auth, user, company, …)
+├── types/                        # TypeScript type definitions
+└── utils/                        # Helpers (auth, email, file, crypto, event-log)
+```
 
 ---
 
 ## How to Run
 
-### Server Setup
+### Setup
 
-1. Navigate to the server directory: `cd server`
-2. Install dependencies: `npm install`
-3. Set up environment variables in a `.env` file.
-4. Run database migrations: `npm run drizzle:migrate`
-5. Start the server: `npm run dev`
-6. (Optional) Start background workers: `npm run dev:worker`
-7. Access the API at `http://localhost:<PORT>/trpc`
-
-### Client Setup
-
-1. Navigate to the client directory: `cd client`
-2. Install dependencies: `npm install`
-3. Start the development server: `npm run dev`
-4. Access the application at `http://localhost:5173`
-
-### Full Stack Development
-
-1. Start the server (from `server/` directory): `npm run dev`
-2. Start the client (from `client/` directory): `npm run dev`
-3. The client will automatically connect to the server API
+1. Install dependencies: `npm install`
+2. Set up environment variables in a `.env` file (see Environment Variables above).
+3. Run database migrations: `npm run drizzle:migrate`
+4. Start the development server: `npm run dev`
+5. Access the API at `http://localhost:3000/trpc`
 
 ### Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run dev:worker` - Start background workers in development
-- `npm run dev:debug` - Start server with debugging enabled
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run start:worker` - Start background workers in production
-- `npm run drizzle:generate` - Generate database migrations
-- `npm run drizzle:migrate` - Run database migrations
-- `npm run drizzle:studio` - Open Drizzle Studio for database management
+| Script                        | Description                                      |
+| ----------------------------- | ------------------------------------------------ |
+| `npm run dev`                 | Start development server with auto-reload        |
+| `npm run dev:debug`           | Start development server with Node debugger      |
+| `npm run build`               | Compile TypeScript and upload Sentry source maps |
+| `npm run start`               | Run compiled production server (`dist/index.js`) |
+| `npm run lint`                | Run ESLint                                       |
+| `npm run format`              | Format source files with Prettier                |
+| `npm run drizzle:generate`    | Generate migration files from schema changes     |
+| `npm run drizzle:migrate`     | Run pending database migrations                  |
+| `npm run drizzle:studio`      | Open Drizzle Studio for visual DB inspection     |
