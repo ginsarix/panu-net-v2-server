@@ -1,4 +1,4 @@
-import { date, pgEnum, pgTable, serial, timestamp } from 'drizzle-orm/pg-core';
+import { date, index, pgEnum, pgTable, serial, timestamp } from 'drizzle-orm/pg-core';
 
 export const subscriptionTypeEnum = pgEnum('subscription_type', [
   'domain',
@@ -7,11 +7,15 @@ export const subscriptionTypeEnum = pgEnum('subscription_type', [
   'mail',
 ]);
 
-export const subscriptions = pgTable('subscriptions', {
-  id: serial('id').primaryKey(),
-  startDate: date('start_date').notNull(),
-  endDate: date('end_date').notNull(),
-  subscriptionType: subscriptionTypeEnum().notNull(),
-  creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
-  updatedOn: timestamp('updated_on', { withTimezone: true }).$onUpdate(() => new Date()),
-});
+export const subscriptions = pgTable(
+  'subscriptions',
+  {
+    id: serial('id').primaryKey(),
+    startDate: date('start_date').notNull(),
+    endDate: date('end_date').notNull(),
+    subscriptionType: subscriptionTypeEnum().notNull(),
+    creationDate: timestamp('creation_date', { withTimezone: true }).notNull().defaultNow(),
+    updatedOn: timestamp('updated_on', { withTimezone: true }).$onUpdate(() => new Date()),
+  },
+  (t) => [index('subscriptions_end_date_idx').on(t.endDate)],
+);

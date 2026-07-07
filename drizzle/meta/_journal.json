@@ -267,6 +267,13 @@
       "when": 1779281756461,
       "tag": "0037_moaning_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1783420815619,
+      "tag": "0038_clear_thanos",
+      "breakpoints": true
     }
   ]
 }

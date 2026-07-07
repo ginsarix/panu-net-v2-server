@@ -14,5 +14,6 @@ export const contracts = pgTable(
   (t) => [
     index('contracts_title_idx').on(t.title),
     index('contracts_file_name_idx').on(t.fileName),
+    index('contracts_company_id_idx').on(t.companyId),
   ],
 );
