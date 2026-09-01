@@ -380,6 +380,7 @@ export interface WsGetOrdersResponse extends WsResponse {
     turu: '1' | '2';
     onay: 'KABUL' | 'TEKLIF' | 'ANALIZ' | 'RET';
     note: string;
+    aciklama: string;
     depo: string;
     tamamisevkedildi: 't' | 'f'; // 🙄
     _cdate: string;
