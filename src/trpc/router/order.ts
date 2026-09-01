@@ -34,6 +34,7 @@ export const orderRouter = router({
       sourceWithScf(result.webServiceSource),
       constructGetOrders(wsSessionId!, result.code, selectedPeriodCode, {
         selectedcolumns: [
+          'aciklama',
           'fisno',
           'unvan',
           'kartaciklama',
